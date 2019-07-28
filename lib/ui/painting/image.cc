@@ -42,10 +42,7 @@ void CanvasImage::dispose() {
 
 size_t CanvasImage::GetAllocationSize() {
   if (auto image = image_.get()) {
-    const auto& info = image->imageInfo();
-    const auto kMipmapOverhead = 4.0 / 3.0;
-    const size_t image_byte_size = info.computeMinByteSize() * kMipmapOverhead;
-    return image_byte_size + sizeof(this);
+    return image->width() * image->height() * 4;
   } else {
     return sizeof(CanvasImage);
   }

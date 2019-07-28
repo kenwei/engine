@@ -18,8 +18,7 @@ EmbedderEngine::EmbedderEngine(
     EmbedderExternalTextureGL::ExternalTextureCallback
         external_texture_callback)
     : thread_host_(std::move(thread_host)),
-      task_runners_(task_runners),
-      shell_(Shell::Create(task_runners_,
+      shell_(Shell::Create(std::move(task_runners),
                            std::move(settings),
                            on_create_platform_view,
                            on_create_rasterizer)),
@@ -35,10 +34,6 @@ EmbedderEngine::~EmbedderEngine() = default;
 
 bool EmbedderEngine::IsValid() const {
   return is_valid_;
-}
-
-const TaskRunners& EmbedderEngine::GetTaskRunners() const {
-  return task_runners_;
 }
 
 bool EmbedderEngine::NotifyCreated() {

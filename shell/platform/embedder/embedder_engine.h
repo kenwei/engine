@@ -32,8 +32,6 @@ class EmbedderEngine {
 
   ~EmbedderEngine();
 
-  const TaskRunners& GetTaskRunners() const;
-
   bool NotifyCreated();
 
   bool NotifyDestroyed();
@@ -73,7 +71,6 @@ class EmbedderEngine {
 
  private:
   const std::unique_ptr<EmbedderThreadHost> thread_host_;
-  TaskRunners task_runners_;
   std::unique_ptr<Shell> shell_;
   const EmbedderExternalTextureGL::ExternalTextureCallback
       external_texture_callback_;

@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "flutter/fml/base32.h"
 #include "flutter/fml/file.h"
@@ -25,8 +24,7 @@ static std::string SkKeyToFilePath(const SkData& data) {
     return "";
   }
 
-  std::string_view view(reinterpret_cast<const char*>(data.data()),
-                        data.size());
+  fml::StringView view(reinterpret_cast<const char*>(data.data()), data.size());
 
   auto encode_result = fml::Base32Encode(view);
 

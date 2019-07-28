@@ -156,14 +156,6 @@ enum Role {
 
   /// Visual only element.
   image,
-
-  /// Contains a region whose changes will be announced to the screen reader
-  /// without having to be in focus.
-  ///
-  /// These regions can be a snackbar or a text field error. Once identified
-  /// with this role, they will be able to get the assistive technology's
-  /// attention right away.
-  liveRegion,
 }
 
 /// A function that creates a [RoleManager] for a [SemanticsObject].
@@ -177,7 +169,6 @@ final Map<Role, RoleManagerFactory> _roleFactories = <Role, RoleManagerFactory>{
   Role.textField: (SemanticsObject object) => TextField(object),
   Role.checkable: (SemanticsObject object) => Checkable(object),
   Role.image: (SemanticsObject object) => ImageRoleManager(object),
-  Role.liveRegion: (SemanticsObject object) => LiveRegion(object),
 };
 
 /// Provides the functionality associated with the role of the given
@@ -590,11 +581,6 @@ class SemanticsObject {
   /// Only applicable when [isTextField] is true.
   bool get isReadOnly => hasFlag(ui.SemanticsFlag.isReadOnly);
 
-  /// Whether this object needs screen readers attention right away.
-  bool get isLiveRegion =>
-      hasFlag(ui.SemanticsFlag.isLiveRegion) &&
-      !hasFlag(ui.SemanticsFlag.isHidden);
-
   /// Whether this object represents an image with no tappable functionality.
   bool get isVisualOnly =>
       hasFlag(ui.SemanticsFlag.isImage) &&
@@ -744,12 +730,10 @@ class SemanticsObject {
 
   /// Role managers.
   ///
-  /// The [_roleManagers] map needs to have a stable order for easier debugging
-  /// and testing. Dart's map literal guarantees the order as described in the
-  /// spec:
-  ///
-  /// > A map literal is ordered: iterating over the keys and/or values of the maps always happens in the order the keys appeared in the source code.
-  final Map<Role, RoleManager> _roleManagers = <Role, RoleManager>{};
+  /// [LinkedHashMap] is used to guarantee a stable order for easier debugging
+  /// and testing.
+  final LinkedHashMap<Role, RoleManager> _roleManagers =
+      LinkedHashMap<Role, RoleManager>();
 
   /// Detects the roles that this semantics object corresponds to and manages
   /// the lifecycles of [SemanticsObjectRole] objects.
@@ -763,12 +747,8 @@ class SemanticsObject {
     _updateRole(Role.incrementable, isIncrementable);
     _updateRole(Role.scrollable,
         isVerticalScrollContainer || isHorizontalScrollContainer);
-    _updateRole(
-        Role.checkable,
-        hasFlag(ui.SemanticsFlag.hasCheckedState) ||
-            hasFlag(ui.SemanticsFlag.hasToggledState));
+    _updateRole(Role.checkable, hasFlag(ui.SemanticsFlag.hasCheckedState));
     _updateRole(Role.image, isVisualOnly);
-    _updateRole(Role.liveRegion, isLiveRegion);
   }
 
   void _updateRole(Role role, bool enabled) {
@@ -822,8 +802,8 @@ class SemanticsObject {
     final html.Element containerElement =
         hasChildren ? getOrCreateChildContainer() : null;
 
-    final bool hasZeroRectOffset = _rect.top == 0.0 && _rect.left == 0.0;
-    final bool hasIdentityTransform =
+    bool hasZeroRectOffset = _rect.top == 0.0 && _rect.left == 0.0;
+    bool hasIdentityTransform =
         _transform == null || isIdentityFloat64ListTransform(_transform);
 
     if (hasZeroRectOffset &&
@@ -848,7 +828,7 @@ class SemanticsObject {
         final double left = _rect.left;
         final double top = _rect.top;
         effectiveTransform = Matrix4.translationValues(left, top, 0.0);
-        effectiveTransformIsIdentity = left == 0.0 && top == 0.0;
+        effectiveTransformIsIdentity = (left == 0.0 && top == 0.0);
       } else {
         // Clone to avoid mutating _transform.
         effectiveTransform = Matrix4.fromFloat64List(_transform).clone()
@@ -910,9 +890,8 @@ class SemanticsObject {
       assert(_childContainerElement != null);
 
       // Remove all children from this semantics object.
-      final int len = _previousChildrenInTraversalOrder.length;
-      for (int i = 0; i < len; i++) {
-        owner._detachObject(_previousChildrenInTraversalOrder[i]);
+      for (int childId in _previousChildrenInTraversalOrder) {
+        owner._detachObject(childId);
       }
       _previousChildrenInTraversalOrder = null;
       _childContainerElement.remove();
@@ -1000,7 +979,7 @@ class SemanticsObject {
     for (int i = 0; i < _previousChildrenInTraversalOrder.length; i++) {
       if (!intersectionIndicesOld.contains(i)) {
         // Child not in the intersection. Must be removed.
-        final int childId = _previousChildrenInTraversalOrder[i];
+        final childId = _previousChildrenInTraversalOrder[i];
         owner._detachObject(childId);
       }
     }
@@ -1032,7 +1011,7 @@ class SemanticsObject {
               _childrenInTraversalOrder.isNotEmpty
           ? '[${_childrenInTraversalOrder.join(', ')}]'
           : '<empty>';
-      return '$runtimeType(#$id, children: $children)';
+      return '$runtimeType(#${id}, children: ${children})';
     } else {
       return super.toString();
     }
@@ -1104,7 +1083,7 @@ class EngineSemanticsOwner {
 
   /// Declares that the [child] must be attached to the [parent].
   ///
-  /// Attachments take precendence over detachments (see [_detachObject]). This
+  /// Attachments take precedence over detachments (see [_detachObject]). This
   /// allows the same node to be detached from one parent in the tree and
   /// reattached to another parent.
   void _attachObject({SemanticsObject parent, SemanticsObject child}) {
@@ -1282,8 +1261,8 @@ class EngineSemanticsOwner {
     // In Chrome the debouncing works well enough to detect accessibility
     // request.
     final bool blinkEnableConditionPassed =
-        browserEngine == BrowserEngine.blink &&
-            _gestureMode == GestureMode.browserGestures;
+        (browserEngine == BrowserEngine.blink &&
+            _gestureMode == GestureMode.browserGestures);
 
     // In Safari debouncing doesn't work. Instead we look at where exactly
     // (within 1 pixel) the event landed. If it landed exactly in the middle of
@@ -1300,7 +1279,7 @@ class EngineSemanticsOwner {
     // gesture detection.
     bool safariEnableConditionPassed = false;
     if (browserEngine == BrowserEngine.webkit) {
-      html.Point<num> activationPoint;
+      html.Point activationPoint;
 
       switch (event.type) {
         case 'click':
@@ -1319,7 +1298,7 @@ class EngineSemanticsOwner {
 
       assert(activationPoint != null);
 
-      final html.Rectangle<num> activatingElementRect =
+      final html.Rectangle activatingElementRect =
           domRenderer.glassPaneElement.getBoundingClientRect();
       final double midX = activatingElementRect.left +
           (activatingElementRect.right - activatingElementRect.left) / 2;
@@ -1376,13 +1355,7 @@ class EngineSemanticsOwner {
       ..top = '0'
       ..right = '0'
       ..bottom = '0';
-    // Insert the semantics placeholder after the scene host. For all widgets
-    // in the scene, except for platform widgets, the scene host will pass the
-    // pointer events through to the semantics tree. However, for platform
-    // views, the pointer events will not pass through, and will be handled
-    // by the platform view.
-    domRenderer.glassPaneElement
-        .insertBefore(_semanticsPlaceholder, domRenderer.sceneHostElement);
+    domRenderer.glassPaneElement.append(_semanticsPlaceholder);
   }
 
   /// Whether the user has requested that [updateSemantics] be called when
@@ -1409,10 +1382,8 @@ class EngineSemanticsOwner {
         _gestureMode = GestureMode.pointerEvents;
         _notifyGestureModeListeners();
       }
-      final List<int> keys = _semanticsTree.keys.toList();
-      final int len = keys.length;
-      for (int i = 0; i < len; i++) {
-        _detachObject(keys[i]);
+      for (int id in _semanticsTree.keys.toList()) {
+        _detachObject(id);
       }
       _finalizeTree();
       _rootSemanticsElement?.remove();
@@ -1469,7 +1440,7 @@ class EngineSemanticsOwner {
   /// This is used to deduplicate gestures detected by Flutter and gestures
   /// detected by the browser. Flutter-detected gestures have higher precedence.
   void _temporarilyDisableBrowserGestureMode() {
-    const Duration _kDebounceThreshold = Duration(milliseconds: 500);
+    const _kDebounceThreshold = Duration(milliseconds: 500);
     _getGestureModeClock().datetime = _now().add(_kDebounceThreshold);
     if (_gestureMode != GestureMode.pointerEvents) {
       _gestureMode = GestureMode.pointerEvents;
@@ -1511,7 +1482,7 @@ class EngineSemanticsOwner {
     // For pointer event reference see:
     //
     // https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events
-    const List<String> _pointerEventTypes = <String>[
+    const _pointerEventTypes = [
       'pointerdown',
       'pointermove',
       'pointerup',
@@ -1614,9 +1585,9 @@ class EngineSemanticsOwner {
       return;
     }
 
-    final SemanticsUpdate update = uiUpdate;
+    SemanticsUpdate update = uiUpdate;
     for (SemanticsNodeUpdate nodeUpdate in update._nodeUpdates) {
-      final SemanticsObject object = getOrCreateObject(nodeUpdate.id);
+      SemanticsObject object = getOrCreateObject(nodeUpdate.id);
       object.updateWith(nodeUpdate);
     }
 
@@ -1628,14 +1599,7 @@ class EngineSemanticsOwner {
       // focusing by touch, only by tabbing around the UI. If semantics is in
       // front of glasspane, then DOM event won't bubble up to the glasspane so
       // it can forward events to the framework.
-      //
-      // We insert the semantics root before the scene host. For all widgets
-      // in the scene, except for platform widgets, the scene host will pass the
-      // pointer events through to the semantics tree. However, for platform
-      // views, the pointer events will not pass through, and will be handled
-      // by the platform view.
-      domRenderer.glassPaneElement
-          .insertBefore(_rootSemanticsElement, domRenderer.sceneHostElement);
+      domRenderer.glassPaneElement.append(_rootSemanticsElement);
     }
 
     _finalizeTree();
@@ -1651,16 +1615,16 @@ class EngineSemanticsOwner {
           for (int childId in object._childrenInTraversalOrder) {
             final SemanticsObject child = _semanticsTree[childId];
             if (child == null) {
-              throw AssertionError('Child #$childId is missing in the tree.');
+              throw AssertionError('Child #${childId} is missing in the tree.');
             }
             if (child._parent == null) {
               throw AssertionError(
-                  'Child #$childId of parent #${object.id} has null parent '
+                  'Child #${childId} of parent #${object.id} has null parent '
                   'reference.');
             }
             if (!identical(child._parent, object)) {
               throw AssertionError(
-                  'Parent #${object.id} has child #$childId. However, the '
+                  'Parent #${object.id} has child #${childId}. However, the '
                   'child is attached to #${child._parent.id}.');
             }
           }
@@ -1686,18 +1650,18 @@ class EngineSemanticsOwner {
 ///
 /// Complexity: n*log(n)
 List<int> longestIncreasingSubsequence(List<int> list) {
-  final int len = list.length;
-  final List<int> predecessors = <int>[];
-  final List<int> mins = <int>[0];
+  final len = list.length;
+  final predecessors = <int>[];
+  final mins = <int>[0];
   int longest = 0;
   for (int i = 0; i < len; i++) {
     // Binary search for the largest positive `j ≤ longest`
     // such that `list[mins[j]] < list[i]`
-    final int elem = list[i];
+    int elem = list[i];
     int lo = 1;
     int hi = longest;
     while (lo <= hi) {
-      final int mid = (lo + hi) ~/ 2;
+      int mid = (lo + hi) ~/ 2;
       if (list[mins[mid]] < elem) {
         lo = mid + 1;
       } else {
@@ -1706,7 +1670,7 @@ List<int> longestIncreasingSubsequence(List<int> list) {
     }
     // After searching, `lo` is 1 greater than the
     // length of the longest prefix of `list[i]`
-    final int expansionIndex = lo;
+    int expansionIndex = lo;
     // The predecessor of `list[i]` is the last index of
     // the subsequence of length `newLongest - 1`
     predecessors.add(mins[expansionIndex - 1]);
@@ -1722,7 +1686,7 @@ List<int> longestIncreasingSubsequence(List<int> list) {
     }
   }
   // Reconstruct the longest subsequence
-  final List<int> seq = List<int>(longest);
+  final seq = new List<int>(longest);
   int k = mins[longest];
   for (int i = longest - 1; i >= 0; i--) {
     seq[i] = k;

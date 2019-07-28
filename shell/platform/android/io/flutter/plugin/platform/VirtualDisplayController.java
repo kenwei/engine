@@ -159,20 +159,6 @@ class VirtualDisplayController {
         textureEntry.release();
     }
 
-    /*package*/ void onInputConnectionLocked() {
-        if (presentation == null || presentation.getView() == null) {
-            return;
-        }
-        presentation.getView().onInputConnectionLocked();
-    }
-
-    /*package*/ void onInputConnectionUnlocked() {
-        if (presentation == null || presentation.getView() == null) {
-            return;
-        }
-        presentation.getView().onInputConnectionUnlocked();
-    }
-
     public View getView() {
         if (presentation == null)
             return null;

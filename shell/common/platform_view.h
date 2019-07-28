@@ -333,8 +333,7 @@ class PlatformView {
 
   //----------------------------------------------------------------------------
   /// @brief      Used by the framework to tell the embedder to apply the
-  ///             specified semantics node updates. The default implementation
-  ///             of this method does nothing.
+  ///             specified semantics node updates.
   ///
   /// @see        SemanticsNode, SemticsNodeUpdates,
   ///             CustomAccessibilityActionUpdates

@@ -88,9 +88,9 @@ class HashLocationStrategy extends LocationStrategy {
   String get path {
     // the hash value is always prefixed with a `#`
     // and if it is empty then it will stay empty
-    String path = _platformLocation.hash ?? '';
+    var path = _platformLocation.hash ?? '';
     // Dart will complain if a call to substring is
-    // executed with a position value that exceeds the
+    // executed with a position value that extends the
     // length of string.
     path = path.isEmpty ? path : path.substring(1);
     // The path, by convention, should always contain a leading '/'.

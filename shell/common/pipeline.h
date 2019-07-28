@@ -10,9 +10,9 @@
 #include "flutter/fml/synchronization/semaphore.h"
 #include "flutter/fml/trace_event.h"
 
-#include <deque>
 #include <memory>
 #include <mutex>
+#include <queue>
 
 namespace flutter {
 
@@ -88,8 +88,7 @@ class Pipeline : public fml::RefCountedThreadSafe<Pipeline<R>> {
     FML_DISALLOW_COPY_AND_ASSIGN(ProducerContinuation);
   };
 
-  explicit Pipeline(uint32_t depth)
-      : depth_(depth), empty_(depth), available_(0) {}
+  explicit Pipeline(uint32_t depth) : empty_(depth), available_(0) {}
 
   ~Pipeline() = default;
 
@@ -102,20 +101,6 @@ class Pipeline : public fml::RefCountedThreadSafe<Pipeline<R>> {
 
     return ProducerContinuation{
         std::bind(&Pipeline::ProducerCommit, this, std::placeholders::_1,
-                  std::placeholders::_2),  // continuation
-        GetNextPipelineTraceID()};         // trace id
-  }
-
-  // Pushes task to the front of the pipeline.
-  //
-  // If we exceed the depth completing this continuation, we drop the
-  // last frame to preserve the depth of the pipeline.
-  //
-  // Note: Use |Pipeline::Produce| where possible. This should only be
-  // used to en-queue high-priority resources.
-  ProducerContinuation ProduceToFront() {
-    return ProducerContinuation{
-        std::bind(&Pipeline::ProducerCommitFront, this, std::placeholders::_1,
                   std::placeholders::_2),  // continuation
         GetNextPipelineTraceID()};         // trace id
   }
@@ -139,7 +124,7 @@ class Pipeline : public fml::RefCountedThreadSafe<Pipeline<R>> {
     {
       std::scoped_lock lock(queue_mutex_);
       std::tie(resource, trace_id) = std::move(queue_.front());
-      queue_.pop_front();
+      queue_.pop();
       items_count = queue_.size();
     }
 
@@ -158,29 +143,15 @@ class Pipeline : public fml::RefCountedThreadSafe<Pipeline<R>> {
   }
 
  private:
-  uint32_t depth_;
   fml::Semaphore empty_;
   fml::Semaphore available_;
   std::mutex queue_mutex_;
-  std::deque<std::pair<ResourcePtr, size_t>> queue_;
+  std::queue<std::pair<ResourcePtr, size_t>> queue_;
 
   void ProducerCommit(ResourcePtr resource, size_t trace_id) {
     {
       std::scoped_lock lock(queue_mutex_);
-      queue_.emplace_back(std::move(resource), trace_id);
-    }
-
-    // Ensure the queue mutex is not held as that would be a pessimization.
-    available_.Signal();
-  }
-
-  void ProducerCommitFront(ResourcePtr resource, size_t trace_id) {
-    {
-      std::scoped_lock lock(queue_mutex_);
-      queue_.emplace_front(std::move(resource), trace_id);
-      while (queue_.size() > depth_) {
-        queue_.pop_back();
-      }
+      queue_.emplace(std::move(resource), trace_id);
     }
 
     // Ensure the queue mutex is not held as that would be a pessimization.

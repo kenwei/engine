@@ -5,7 +5,7 @@
 part of engine;
 
 /// Make the content editable span visible to facilitate debugging.
-const bool _debugVisibleTextEditing = false;
+const _debugVisibleTextEditing = false;
 
 void _emptyCallback(dynamic _) {}
 
@@ -100,16 +100,9 @@ class EditingState {
   bool get isValid => baseOffset >= 0 && extentOffset >= 0;
 
   @override
-  int get hashCode => ui.hashValues(text, baseOffset, extentOffset);
-
-  @override
   bool operator ==(dynamic other) {
-    if (identical(this, other)) {
-      return true;
-    }
-    if (runtimeType != other.runtimeType) {
-      return false;
-    }
+    if (identical(this, other)) return true;
+    if (runtimeType != other.runtimeType) return false;
     final EditingState typedOther = other;
     return text == typedOther.text &&
         baseOffset == typedOther.baseOffset &&
@@ -221,8 +214,7 @@ class TextEditingElement {
   EditingState _lastEditingState;
   _OnChangeCallback _onChange;
 
-  final List<StreamSubscription<html.Event>> _subscriptions =
-      <StreamSubscription<html.Event>>[];
+  final List<StreamSubscription> _subscriptions = [];
 
   ElementType get _elementType {
     final ElementType type = _getTypeFromElement(domElement);
@@ -467,9 +459,9 @@ class PersistentTextEditingElement extends TextEditingElement {
   PersistentTextEditingElement(
     html.HtmlElement domElement, {
     @required html.VoidCallback onDomElementSwap,
-  })  : _onDomElementSwap = onDomElementSwap,
-        // Make sure the dom element is of a type that we support for text editing.
-        assert(_getTypeFromElement(domElement) != null) {
+  }) : _onDomElementSwap = onDomElementSwap {
+    // Make sure the dom element is of a type that we support for text editing.
+    assert(_getTypeFromElement(domElement) != null);
     this.domElement = domElement;
   }
 
@@ -563,6 +555,8 @@ class HybridTextEditing {
   bool _isEditing = false;
   Map<String, dynamic> _configuration;
 
+  final List<StreamSubscription> _subscriptions = [];
+
   /// All "flutter/textinput" platform messages should be sent to this method.
   void handleTextInput(ByteData data) {
     final MethodCall call = const JSONMethodCodec().decodeMethodCall(data);
@@ -611,7 +605,7 @@ class HybridTextEditing {
     ui.window.onPlatformMessage(
       'flutter/textinput',
       const JSONMethodCodec().encodeMethodCall(
-        MethodCall('TextInputClient.updateEditingState', <dynamic>[
+        MethodCall('TextInputClient.updateEditingState', [
           _clientId,
           editingState.toFlutter(),
         ]),

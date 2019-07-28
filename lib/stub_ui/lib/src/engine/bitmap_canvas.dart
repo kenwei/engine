@@ -10,33 +10,25 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   /// system's origin, within which this canvas paints.
   ///
   /// Painting outside these bounds will result in cropping.
-  ui.Rect get bounds => _bounds;
-  set bounds(ui.Rect newValue) {
-    assert(newValue != null);
-    _bounds = newValue;
-  }
-
-  ui.Rect _bounds;
+  ui.Rect bounds;
 
   /// The amount of padding to add around the edges of this canvas to
   /// ensure that anti-aliased arcs are not clipped.
-  static const int paddingPixels = 1;
+  static const paddingPixels = 1;
 
-  @override
-  final html.Element rootElement = html.Element.tag('flt-canvas');
-
+  final html.Element rootElement = new html.Element.tag('flt-canvas');
   html.CanvasElement _canvas;
   html.CanvasRenderingContext2D _ctx;
 
   /// The size of the paint [bounds].
-  ui.Size get size => _bounds.size;
+  ui.Size get size => bounds.size;
 
   /// The last paragraph style is cached to optimize the case where the style
   /// hasn't changed.
   ParagraphGeometricStyle _cachedLastStyle;
 
   /// List of extra sibling elements created for paragraphs and clipping.
-  final List<html.Element> _children = <html.Element>[];
+  final _children = new List<html.Element>();
 
   /// The number of pixels along the width of the bitmap that the canvas element
   /// renders into.
@@ -78,7 +70,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   /// This canvas can be reused by pictures with different paint bounds as long
   /// as the [Rect.size] of the bounds fully fit within the size used to
   /// initialize this canvas.
-  BitmapCanvas(this._bounds) : assert(_bounds != null) {
+  BitmapCanvas(this.bounds) {
     rootElement.style.position = 'absolute';
 
     // Adds one extra pixel to the requested size. This is to compensate for
@@ -100,7 +92,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
     final double cssHeight =
         _heightInBitmapPixels / html.window.devicePixelRatio;
 
-    _canvas = html.CanvasElement(
+    _canvas = new html.CanvasElement(
       width: _widthInBitmapPixels,
       height: _heightInBitmapPixels,
     );
@@ -131,8 +123,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   @override
   void clear() {
     super.clear();
-    final int len = _children.length;
-    for (int i = 0; i < len; i++) {
+    for (int i = 0, len = _children.length; i < len; i++) {
       _children[i].remove();
     }
     _children.clear();
@@ -185,20 +176,20 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
 
     // The flooring of the value is to ensure that canvas' top-left corner
     // lands on the physical pixel.
-    final int canvasPositionX = _bounds.left.floor() - paddingPixels;
-    final int canvasPositionY = _bounds.top.floor() - paddingPixels;
+    final int canvasPositionX = bounds.left.floor() - paddingPixels;
+    final int canvasPositionY = bounds.top.floor() - paddingPixels;
     final double canvasPositionCorrectionX =
-        _bounds.left - paddingPixels - canvasPositionX.toDouble();
+        bounds.left - paddingPixels - canvasPositionX.toDouble();
     final double canvasPositionCorrectionY =
-        _bounds.top - paddingPixels - canvasPositionY.toDouble();
+        bounds.top - paddingPixels - canvasPositionY.toDouble();
 
     rootElement.style.transform =
         'translate(${canvasPositionX}px, ${canvasPositionY}px)';
 
     // This compensates for the translate on the `rootElement`.
     translate(
-      -_bounds.left + canvasPositionCorrectionX + paddingPixels,
-      -_bounds.top + canvasPositionCorrectionY + paddingPixels,
+      -bounds.left + canvasPositionCorrectionX + paddingPixels,
+      -bounds.top + canvasPositionCorrectionY + paddingPixels,
     );
   }
 
@@ -213,23 +204,23 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
     ctx.globalCompositeOperation =
         _stringForBlendMode(paint.blendMode) ?? 'source-over';
     ctx.lineWidth = paint.strokeWidth ?? 1.0;
-    final ui.StrokeCap cap = paint.strokeCap;
+    var cap = paint.strokeCap;
     if (cap != null) {
       ctx.lineCap = _stringForStrokeCap(cap);
     } else {
       ctx.lineCap = 'butt';
     }
-    final ui.StrokeJoin join = paint.strokeJoin;
+    var join = paint.strokeJoin;
     if (join != null) {
       ctx.lineJoin = _stringForStrokeJoin(join);
     } else {
       ctx.lineJoin = 'miter';
     }
     if (paint.shader != null) {
-      final Object paintStyle = paint.shader.createPaintStyle(ctx);
+      var paintStyle = paint.shader.createPaintStyle(ctx);
       _setFillAndStrokeStyle(paintStyle, paintStyle);
     } else if (paint.color != null) {
-      final String colorString = paint.color.toCssString();
+      var colorString = paint.color.toCssString();
       _setFillAndStrokeStyle(colorString, colorString);
     }
     if (paint.maskFilter != null) {
@@ -270,7 +261,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   }
 
   void _setFillAndStrokeStyle(Object fillStyle, Object strokeStyle) {
-    final html.CanvasRenderingContext2D _ctx = ctx;
+    final _ctx = ctx;
     if (!identical(_prevFillStyle, fillStyle)) {
       _prevFillStyle = _ctx.fillStyle = fillStyle;
     }
@@ -303,7 +294,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   //                HTML DOM elements.
   void restoreToCount(int count) {
     assert(_saveCount >= count);
-    final int restores = _saveCount - count;
+    int restores = _saveCount - count;
     for (int i = 0; i < restores; i++) {
       ctx.restore();
     }
@@ -402,7 +393,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   @override
   void clipRRect(ui.RRect rrect) {
     super.clipRRect(rrect);
-    final ui.Path path = ui.Path()..addRRect(rrect);
+    var path = new ui.Path()..addRRect(rrect);
     _runPath(path);
     ctx.clip();
   }
@@ -484,10 +475,10 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
     // rounded rectangle (after the corner).
     // TODO(het): Confirm that this is the end point in Flutter for RRect
 
-    double left = rrect.left;
-    double right = rrect.right;
-    double top = rrect.top;
-    double bottom = rrect.bottom;
+    var left = rrect.left;
+    var right = rrect.right;
+    var top = rrect.top;
+    var bottom = rrect.bottom;
     if (left > right) {
       left = right;
       right = rrect.left;
@@ -496,14 +487,14 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
       top = bottom;
       bottom = rrect.top;
     }
-    final double trRadiusX = rrect.trRadiusX.abs();
-    final double tlRadiusX = rrect.tlRadiusX.abs();
-    final double trRadiusY = rrect.trRadiusY.abs();
-    final double tlRadiusY = rrect.tlRadiusY.abs();
-    final double blRadiusX = rrect.blRadiusX.abs();
-    final double brRadiusX = rrect.brRadiusX.abs();
-    final double blRadiusY = rrect.blRadiusY.abs();
-    final double brRadiusY = rrect.brRadiusY.abs();
+    var trRadiusX = rrect.trRadiusX.abs();
+    var tlRadiusX = rrect.tlRadiusX.abs();
+    var trRadiusY = rrect.trRadiusY.abs();
+    var tlRadiusY = rrect.tlRadiusY.abs();
+    var blRadiusX = rrect.blRadiusX.abs();
+    var brRadiusX = rrect.brRadiusX.abs();
+    var blRadiusY = rrect.blRadiusY.abs();
+    var brRadiusY = rrect.brRadiusY.abs();
 
     ctx.moveTo(left + trRadiusX, top);
 
@@ -565,18 +556,18 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   }
 
   void _drawRRectPathReverse(ui.RRect rrect, {bool startNewPath = true}) {
-    double left = rrect.left;
-    double right = rrect.right;
-    double top = rrect.top;
-    double bottom = rrect.bottom;
-    final double trRadiusX = rrect.trRadiusX.abs();
-    final double tlRadiusX = rrect.tlRadiusX.abs();
-    final double trRadiusY = rrect.trRadiusY.abs();
-    final double tlRadiusY = rrect.tlRadiusY.abs();
-    final double blRadiusX = rrect.blRadiusX.abs();
-    final double brRadiusX = rrect.brRadiusX.abs();
-    final double blRadiusY = rrect.blRadiusY.abs();
-    final double brRadiusY = rrect.brRadiusY.abs();
+    var left = rrect.left;
+    var right = rrect.right;
+    var top = rrect.top;
+    var bottom = rrect.bottom;
+    var trRadiusX = rrect.trRadiusX.abs();
+    var tlRadiusX = rrect.tlRadiusX.abs();
+    var trRadiusY = rrect.trRadiusY.abs();
+    var tlRadiusY = rrect.tlRadiusY.abs();
+    var blRadiusX = rrect.blRadiusX.abs();
+    var brRadiusX = rrect.brRadiusX.abs();
+    var blRadiusY = rrect.blRadiusY.abs();
+    var brRadiusY = rrect.brRadiusY.abs();
 
     if (left > right) {
       left = right;
@@ -681,10 +672,9 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   @override
   void drawShadow(ui.Path path, ui.Color color, double elevation,
       bool transparentOccluder) {
-    final List<CanvasShadow> shadows =
-        ElevationShadow.computeCanvasShadows(elevation, color);
+    final shadows = ElevationShadow.computeCanvasShadows(elevation, color);
     if (shadows.isNotEmpty) {
-      for (final CanvasShadow shadow in shadows) {
+      for (final shadow in shadows) {
         // TODO(het): Shadows with transparent occluders are not supported
         // on webkit since filter is unsupported.
         if (transparentOccluder && browserEngine != BrowserEngine.webkit) {
@@ -694,14 +684,14 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
           // paint the shadow without the path itself, but if we use a non-zero
           // alpha for the paint the path is painted in addition to the shadow,
           // which is undesirable.
-          final ui.Paint paint = ui.Paint()
+          final paint = ui.Paint()
             ..color = shadow.color
             ..style = ui.PaintingStyle.fill
             ..strokeWidth = 0.0
             ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, shadow.blur);
           _ctx.save();
           _ctx.translate(shadow.offsetX, shadow.offsetY);
-          final ui.PaintData paintData = paint.webOnlyPaintData;
+          final paintData = paint.webOnlyPaintData;
           _applyPaint(paintData);
           _runPath(path);
           _strokeOrFill(paintData, resetPaint: false);
@@ -715,12 +705,12 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
           // the opaque occluder. For that reason, we fill with the shadow color,
           // and set the shadow color to fully opaque. This way, the visible
           // pixels are less opaque and less noticeable.
-          final ui.Paint paint = ui.Paint()
+          final paint = ui.Paint()
             ..color = shadow.color
             ..style = ui.PaintingStyle.fill
             ..strokeWidth = 0.0;
           _ctx.save();
-          final ui.PaintData paintData = paint.webOnlyPaintData;
+          final paintData = paint.webOnlyPaintData;
           _applyPaint(paintData);
           _ctx.shadowBlur = shadow.blur;
           _ctx.shadowColor = shadow.color.withAlpha(0xff).toCssString();
@@ -738,8 +728,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   @override
   void drawImage(ui.Image image, ui.Offset p, ui.PaintData paint) {
     _applyPaint(paint);
-    final HtmlImage htmlImage = image;
-    final html.Element imgElement = htmlImage.imgElement.clone(true);
+    html.Element imgElement = (image as HtmlImage).imgElement.clone(true);
     imgElement.style
       ..position = 'absolute'
       ..transform = 'translate(${p.dx}px, ${p.dy}px)';
@@ -751,9 +740,8 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
       ui.Image image, ui.Rect src, ui.Rect dst, ui.PaintData paint) {
     // TODO(het): Check if the src rect is the entire image, and if so just
     // append the imgElement and set it's height and width.
-    final HtmlImage htmlImage = image;
     ctx.drawImageScaledFromSource(
-      htmlImage.imgElement,
+      (image as HtmlImage).imgElement,
       src.left,
       src.top,
       src.width,
@@ -765,62 +753,23 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
     );
   }
 
-  void _drawTextLine(
-      ParagraphGeometricStyle style, String line, double x, double y) {
-    final double letterSpacing = style.letterSpacing;
-    if (letterSpacing == null || letterSpacing == 0.0) {
-      ctx.fillText(line, x, y);
-    } else {
-      // When letter-spacing is set, we go through a more expensive code path
-      // that renders each character separately with the correct spacing
-      // between them.
-      //
-      // We are drawing letter spacing like the web does it, by adding the
-      // spacing after each letter. This is different from Flutter which puts
-      // the spacing around each letter i.e. for a 10px letter spacing, Flutter
-      // would put 5px before each letter and 5px after it, but on the web, we
-      // put no spacing before the letter and 10px after it. This is how the DOM
-      // does it.
-      final int len = line.length;
-      for (int i = 0; i < len; i++) {
-        final String char = line[i];
-        ctx.fillText(char, x, y);
-        x += letterSpacing + ctx.measureText(char).width;
-      }
-    }
-  }
-
   @override
-  void drawParagraph(EngineParagraph paragraph, ui.Offset offset) {
-    assert(paragraph._isLaidOut);
+  void drawParagraph(ui.Paragraph paragraph, ui.Offset offset) {
+    assert(paragraph.webOnlyIsLaidOut);
 
-    final ParagraphGeometricStyle style = paragraph._geometricStyle;
+    final ParagraphGeometricStyle style =
+        paragraph.webOnlyGetParagraphGeometricStyle();
 
-    if (paragraph._drawOnCanvas) {
-      final List<String> lines =
-          paragraph._lines ?? <String>[paragraph._plainText];
-
-      final ui.PaintData backgroundPaint =
-          paragraph._background?.webOnlyPaintData;
-      if (backgroundPaint != null) {
-        final ui.Rect rect = ui.Rect.fromLTWH(
-            offset.dx, offset.dy, paragraph.width, paragraph.height);
-        drawRect(rect, backgroundPaint);
-      }
-
+    if (paragraph.webOnlyDrawOnCanvas) {
       if (style != _cachedLastStyle) {
         ctx.font = style.cssFontString;
         _cachedLastStyle = style;
       }
-      _applyPaint(paragraph._paint.webOnlyPaintData);
-
-      final double x = offset.dx + paragraph._alignOffset;
-      double y = offset.dy + paragraph.alphabeticBaseline;
-      final int len = lines.length;
-      for (int i = 0; i < len; i++) {
-        _drawTextLine(style, lines[i], x, y);
-        y += paragraph._lineHeight;
-      }
+      _applyPaint(paragraph.webOnlyGetPaint().webOnlyPaintData);
+      ctx.fillText(
+          paragraph.webOnlyGetPlainText(),
+          offset.dx + paragraph.webOnlyAlignOffset,
+          offset.dy + paragraph.alphabeticBaseline);
       _resetPaint();
       return;
     }
@@ -829,14 +778,14 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
         _drawParagraphElement(paragraph, offset);
 
     if (isClipped) {
-      final List<html.Element> clipElements =
+      List<html.Element> clipElements =
           _clipContent(_clipStack, paragraphElement, offset, currentTransform);
       for (html.Element clipElement in clipElements) {
         rootElement.append(clipElement);
         _children.add(clipElement);
       }
     } else {
-      final String cssTransform =
+      String cssTransform =
           matrix4ToCssTransform(transformWithOffset(currentTransform, offset));
       paragraphElement.style.transform = cssTransform;
       rootElement.append(paragraphElement);
@@ -852,11 +801,11 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
   /// 'Runs' the given [path] by applying all of its commands to the canvas.
   void _runPath(ui.Path path) {
     ctx.beginPath();
-    for (Subpath subpath in path.subpaths) {
-      for (PathCommand command in subpath.commands) {
+    for (var subpath in path.subpaths) {
+      for (var command in subpath.commands) {
         switch (command.type) {
           case PathCommandTypes.bezierCurveTo:
-            final BezierCurveTo curve = command;
+            BezierCurveTo curve = command;
             ctx.bezierCurveTo(
                 curve.x1, curve.y1, curve.x2, curve.y2, curve.x3, curve.y3);
             break;
@@ -864,7 +813,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
             ctx.closePath();
             break;
           case PathCommandTypes.ellipse:
-            final Ellipse ellipse = command;
+            Ellipse ellipse = command;
             ctx.ellipse(
                 ellipse.x,
                 ellipse.y,
@@ -876,29 +825,29 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
                 ellipse.anticlockwise);
             break;
           case PathCommandTypes.lineTo:
-            final LineTo lineTo = command;
+            LineTo lineTo = command;
             ctx.lineTo(lineTo.x, lineTo.y);
             break;
           case PathCommandTypes.moveTo:
-            final MoveTo moveTo = command;
+            MoveTo moveTo = command;
             ctx.moveTo(moveTo.x, moveTo.y);
             break;
           case PathCommandTypes.rRect:
-            final RRectCommand rrectCommand = command;
+            RRectCommand rrectCommand = command;
             _drawRRectPath(rrectCommand.rrect, startNewPath: false);
             break;
           case PathCommandTypes.rect:
-            final RectCommand rectCommand = command;
+            RectCommand rectCommand = command;
             ctx.rect(rectCommand.x, rectCommand.y, rectCommand.width,
                 rectCommand.height);
             break;
           case PathCommandTypes.quadraticCurveTo:
-            final QuadraticCurveTo quadraticCurveTo = command;
+            QuadraticCurveTo quadraticCurveTo = command;
             ctx.quadraticCurveTo(quadraticCurveTo.x1, quadraticCurveTo.y1,
                 quadraticCurveTo.x2, quadraticCurveTo.y2);
             break;
           default:
-            throw UnimplementedError('Unknown path command $command');
+            throw new UnimplementedError('Unknown path command $command');
         }
       }
     }
@@ -906,9 +855,7 @@ class BitmapCanvas extends EngineCanvas with SaveStackTracking {
 }
 
 String _stringForBlendMode(ui.BlendMode blendMode) {
-  if (blendMode == null) {
-    return null;
-  }
+  if (blendMode == null) return null;
   switch (blendMode) {
     case ui.BlendMode.srcOver:
       return 'source-over';
@@ -966,15 +913,13 @@ String _stringForBlendMode(ui.BlendMode blendMode) {
     case ui.BlendMode.luminosity:
       return 'luminosity';
     default:
-      throw UnimplementedError(
+      throw new UnimplementedError(
           'Flutter Web does not support the blend mode: $blendMode');
   }
 }
 
 String _stringForStrokeCap(ui.StrokeCap strokeCap) {
-  if (strokeCap == null) {
-    return null;
-  }
+  if (strokeCap == null) return null;
   switch (strokeCap) {
     case ui.StrokeCap.butt:
       return 'butt';
@@ -1009,22 +954,23 @@ String _stringForStrokeJoin(ui.StrokeJoin strokeJoin) {
 List<html.Element> _clipContent(List<_SaveClipEntry> clipStack,
     html.HtmlElement content, ui.Offset offset, Matrix4 currentTransform) {
   html.Element root, curElement;
-  final List<html.Element> clipDefs = <html.Element>[];
-  final int len = clipStack.length;
-  for (int clipIndex = 0; clipIndex < len; clipIndex++) {
+  List<html.Element> clipDefs = [];
+  for (int clipIndex = 0, len = clipStack.length;
+      clipIndex < len;
+      clipIndex++) {
     final _SaveClipEntry entry = clipStack[clipIndex];
-    final html.HtmlElement newElement = html.DivElement();
+    html.HtmlElement newElement = new html.DivElement();
     if (root == null) {
       root = newElement;
     } else {
       domRenderer.append(curElement, newElement);
     }
     curElement = newElement;
-    final ui.Rect rect = entry.rect;
-    Matrix4 newClipTransform = entry.currentTransform;
+    ui.Rect rect = entry.rect;
+    var newClipTransform = entry.currentTransform;
     if (rect != null) {
-      final double clipOffsetX = rect.left;
-      final double clipOffsetY = rect.top;
+      final clipOffsetX = rect.left;
+      final clipOffsetY = rect.top;
       newClipTransform = newClipTransform.clone()
         ..translate(clipOffsetX, clipOffsetY);
       curElement.style
@@ -1034,12 +980,11 @@ List<html.Element> _clipContent(List<_SaveClipEntry> clipStack,
         ..width = '${rect.right - clipOffsetX}px'
         ..height = '${rect.bottom - clipOffsetY}px';
     } else if (entry.rrect != null) {
-      final ui.RRect roundRect = entry.rrect;
-      final String borderRadius =
-          '${roundRect.tlRadiusX}px ${roundRect.trRadiusX}px '
+      ui.RRect roundRect = entry.rrect;
+      final borderRadius = '${roundRect.tlRadiusX}px ${roundRect.trRadiusX}px '
           '${roundRect.brRadiusX}px ${roundRect.blRadiusX}px';
-      final double clipOffsetX = roundRect.left;
-      final double clipOffsetY = roundRect.top;
+      final clipOffsetX = roundRect.left;
+      final clipOffsetY = roundRect.top;
       newClipTransform = newClipTransform.clone()
         ..translate(clipOffsetX, clipOffsetY);
       curElement.style
@@ -1051,20 +996,20 @@ List<html.Element> _clipContent(List<_SaveClipEntry> clipStack,
         ..height = '${roundRect.bottom - clipOffsetY}px';
     } else if (entry.path != null) {
       curElement.style.transform = matrix4ToCssTransform(newClipTransform);
-      final String svgClipPath = _pathToSvgClipPath(entry.path);
-      final html.Element clipElement =
+      String svgClipPath = _pathToSvgClipPath(entry.path);
+      html.Element clipElement =
           html.Element.html(svgClipPath, treeSanitizer: _NullTreeSanitizer());
       domRenderer.setElementStyle(
-          curElement, 'clip-path', 'url(#svgClip$_clipIdCounter)');
+          curElement, 'clip-path', 'url(#svgClip${_clipIdCounter})');
       domRenderer.setElementStyle(
-          curElement, '-webkit-clip-path', 'url(#svgClip$_clipIdCounter)');
+          curElement, '-webkit-clip-path', 'url(#svgClip${_clipIdCounter})');
       clipDefs.add(clipElement);
     }
     // Reverse the transform of the clipping element so children can use
     // effective transform to render.
     // TODO(flutter_web): When we have more than a single clip element,
     // reduce number of div nodes by merging (multiplying transforms).
-    final html.Element reverseTransformDiv = html.DivElement();
+    var reverseTransformDiv = new html.DivElement();
     reverseTransformDiv.style
       ..transform =
           _cssTransformAtOffset(newClipTransform.clone()..invert(), 0, 0)

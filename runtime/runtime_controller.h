@@ -35,7 +35,6 @@ class RuntimeController final : public WindowClient {
                     TaskRunners task_runners,
                     fml::WeakPtr<SnapshotDelegate> snapshot_delegate,
                     fml::WeakPtr<IOManager> io_manager,
-                    fml::WeakPtr<ImageDecoder> iamge_decoder,
                     std::string advisory_script_uri,
                     std::string advisory_script_entrypoint,
                     std::function<void(int64_t)> idle_notification_callback,
@@ -131,7 +130,6 @@ class RuntimeController final : public WindowClient {
   TaskRunners task_runners_;
   fml::WeakPtr<SnapshotDelegate> snapshot_delegate_;
   fml::WeakPtr<IOManager> io_manager_;
-  fml::WeakPtr<ImageDecoder> image_decoder_;
   std::string advisory_script_uri_;
   std::string advisory_script_entrypoint_;
   std::function<void(int64_t)> idle_notification_callback_;
@@ -148,7 +146,6 @@ class RuntimeController final : public WindowClient {
                     TaskRunners task_runners,
                     fml::WeakPtr<SnapshotDelegate> snapshot_delegate,
                     fml::WeakPtr<IOManager> io_manager,
-                    fml::WeakPtr<ImageDecoder> image_decoder,
                     std::string advisory_script_uri,
                     std::string advisory_script_entrypoint,
                     std::function<void(int64_t)> idle_notification_callback,

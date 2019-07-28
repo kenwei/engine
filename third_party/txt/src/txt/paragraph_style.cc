@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "paragraph_style.h"
-
 #include <vector>
+
+#include "paragraph_style.h"
 
 namespace txt {
 
@@ -30,7 +30,6 @@ TextStyle ParagraphStyle::GetTextStyle() const {
   }
   result.locale = locale;
   result.height = height;
-  result.has_height_override = has_height_override;
   return result;
 }
 

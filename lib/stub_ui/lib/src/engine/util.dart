@@ -35,17 +35,15 @@ typedef Callbacker<T> = String Function(Callback<T> callback);
 /// }
 /// ```
 Future<T> futurize<T>(Callbacker<T> callbacker) {
-  final Completer<T> completer = Completer<T>.sync();
+  final Completer<T> completer = new Completer<T>.sync();
   final String error = callbacker((T t) {
     if (t == null) {
-      completer.completeError(Exception('operation failed'));
+      completer.completeError(new Exception('operation failed'));
     } else {
       completer.complete(t);
     }
   });
-  if (error != null) {
-    throw Exception(error);
-  }
+  if (error != null) throw new Exception(error);
   return completer.future;
 }
 
@@ -96,8 +94,8 @@ String float64ListToCssTransform(Float64List matrix) {
       // 13 can be anything
       m[14] == 0.0 &&
       m[15] == 1.0) {
-    final double tx = m[12];
-    final double ty = m[13];
+    var tx = m[12];
+    var ty = m[13];
     return 'translate(${tx}px, ${ty}px)';
   } else {
     return 'matrix3d(${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]},${m[6]},${m[7]},${m[8]},${m[9]},${m[10]},${m[11]},${m[12]},${m[13]},${m[14]},${m[15]})';
@@ -105,7 +103,7 @@ String float64ListToCssTransform(Float64List matrix) {
 }
 
 bool get assertionsEnabled {
-  bool k = false;
+  var k = false;
   assert(k = true);
   return k;
 }
@@ -218,14 +216,14 @@ int _clipIdCounter = 0;
 String _pathToSvgClipPath(ui.Path path,
     {double offsetX = 0, double offsetY = 0}) {
   _clipIdCounter += 1;
-  final ui.Rect bounds = path.getBounds();
-  final StringBuffer sb = StringBuffer();
+  ui.Rect bounds = path.getBounds();
+  StringBuffer sb = new StringBuffer();
   sb.write('<svg width="${bounds.right}" height="${bounds.bottom}" '
       'style="position:absolute">');
   sb.write('<defs>');
 
-  final String clipId = 'svgClip$_clipIdCounter';
-  sb.write('<clipPath id=$clipId>');
+  String clipId = 'svgClip$_clipIdCounter';
+  sb.write('<clipPath id=${clipId}>');
 
   sb.write('<path fill="#FFFFFF" d="');
   pathToSvg(path, sb, offsetX: offsetX, offsetY: offsetY);

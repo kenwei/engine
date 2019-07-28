@@ -6,8 +6,18 @@ part of engine;
 
 /// A surface that creates a DOM element for whole app.
 class PersistedScene extends PersistedContainerSurface {
-  PersistedScene(PersistedScene oldLayer) : super(oldLayer) {
+  PersistedScene() : super(const Object()) {
     _transform = Matrix4.identity();
+  }
+
+  @override
+  bool isTotalMatchFor(PersistedSurface other) {
+    // The scene is a special-case kind of surface in that it is the only root
+    // layer in the tree. Therefore it can always be updated from a previous
+    // scene. There's no ambiguity about whether you can accidentally pick a
+    // false match.
+    assert(other is PersistedScene);
+    return true;
   }
 
   @override

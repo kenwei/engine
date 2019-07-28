@@ -27,13 +27,12 @@ EmbedderContext& EmbedderTest::GetEmbedderContext() {
 
 // |testing::Test|
 void EmbedderTest::SetUp() {
-  ThreadTest::SetUp();
+  // Nothing to do here since we will lazily setup the context when asked.
 }
 
 // |testing::Test|
 void EmbedderTest::TearDown() {
   embedder_context_.reset();
-  ThreadTest::TearDown();
 }
 
 }  // namespace testing

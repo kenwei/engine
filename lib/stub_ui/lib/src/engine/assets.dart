@@ -16,7 +16,7 @@ class AssetManager {
   const AssetManager({this.assetsDir = _defaultAssetsDir});
 
   String getAssetUrl(String asset) {
-    final Uri assetUri = Uri.parse(asset);
+    var assetUri = Uri.parse(asset);
 
     String url;
 
@@ -30,15 +30,14 @@ class AssetManager {
   }
 
   Future<ByteData> load(String asset) async {
-    final String url = getAssetUrl(asset);
+    var url = getAssetUrl(asset);
     try {
-      final html.HttpRequest request =
+      var request =
           await html.HttpRequest.request(url, responseType: 'arraybuffer');
 
-      final ByteBuffer response = request.response;
-      return response.asByteData();
+      return (request.response as ByteBuffer).asByteData();
     } on html.ProgressEvent catch (e) {
-      final html.EventTarget target = e.target;
+      final target = e.target;
       if (target is html.HttpRequest) {
         if (target.status == 404 && asset == 'AssetManifest.json') {
           html.window.console
@@ -78,19 +77,17 @@ class WebOnlyMockAssetManager implements AssetManager {
   @override
   Future<ByteData> load(String asset) {
     if (asset == getAssetUrl('AssetManifest.json')) {
-      return Future<ByteData>.value(
-          _toByteData(utf8.encode(defaultAssetManifest)));
+      return Future.value(_toByteData(utf8.encode(defaultAssetManifest)));
     }
     if (asset == getAssetUrl('FontManifest.json')) {
-      return Future<ByteData>.value(
-          _toByteData(utf8.encode(defaultFontManifest)));
+      return Future.value(_toByteData(utf8.encode(defaultFontManifest)));
     }
-    throw AssetManagerException(asset, 404);
+    throw new AssetManagerException(asset, 404);
   }
 
   ByteData _toByteData(List<int> bytes) {
-    final ByteData byteData = ByteData(bytes.length);
-    for (int i = 0; i < bytes.length; i++) {
+    final byteData = ByteData(bytes.length);
+    for (var i = 0; i < bytes.length; i++) {
       byteData.setUint8(i, bytes[i]);
     }
     return byteData;

@@ -43,7 +43,6 @@ TEST_F(DartIsolateTest, RootIsolateCreationAndShutdown) {
       nullptr,                            // window
       {},                                 // snapshot delegate
       {},                                 // io manager
-      {},                                 // image decoder
       "main.dart",                        // advisory uri
       "main",                             // advisory entrypoint,
       nullptr,                            // flags
@@ -77,7 +76,6 @@ TEST_F(DartIsolateTest, IsolateShutdownCallbackIsInIsolateScope) {
       nullptr,                            // window
       {},                                 // snapshot delegate
       {},                                 // io manager
-      {},                                 // image decoder
       "main.dart",                        // advisory uri
       "main",                             // advisory entrypoint
       nullptr,                            // flags
@@ -188,7 +186,6 @@ static void RunDartCodeInIsolate(DartVMRef& vm_ref,
       nullptr,                            // window
       {},                                 // snapshot delegate
       {},                                 // io manager
-      {},                                 // image decoder
       "main.dart",                        // advisory uri
       "main",                             // advisory entrypoint
       nullptr,                            // flags

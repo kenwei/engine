@@ -82,21 +82,6 @@ flutter::ExternalViewEmbedder* IOSSurfaceGL::GetExternalViewEmbedder() {
   }
 }
 
-void IOSSurfaceGL::CancelFrame() {
-  FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
-  FML_CHECK(platform_views_controller != nullptr);
-  platform_views_controller->CancelFrame();
-  // Committing the current transaction as |BeginFrame| will create a nested
-  // CATransaction otherwise.
-  [CATransaction commit];
-}
-
-bool IOSSurfaceGL::HasPendingViewOperations() {
-  FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
-  FML_CHECK(platform_views_controller != nullptr);
-  return platform_views_controller->HasPendingViewOperations();
-}
-
 void IOSSurfaceGL::BeginFrame(SkISize frame_size) {
   FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
   FML_CHECK(platform_views_controller != nullptr);
@@ -104,12 +89,10 @@ void IOSSurfaceGL::BeginFrame(SkISize frame_size) {
   [CATransaction begin];
 }
 
-void IOSSurfaceGL::PrerollCompositeEmbeddedView(
-    int view_id,
-    std::unique_ptr<flutter::EmbeddedViewParams> params) {
+void IOSSurfaceGL::PrerollCompositeEmbeddedView(int view_id) {
   FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
   FML_CHECK(platform_views_controller != nullptr);
-  platform_views_controller->PrerollCompositeEmbeddedView(view_id, std::move(params));
+  platform_views_controller->PrerollCompositeEmbeddedView(view_id);
 }
 
 std::vector<SkCanvas*> IOSSurfaceGL::GetCurrentCanvases() {
@@ -118,10 +101,11 @@ std::vector<SkCanvas*> IOSSurfaceGL::GetCurrentCanvases() {
   return platform_views_controller->GetCurrentCanvases();
 }
 
-SkCanvas* IOSSurfaceGL::CompositeEmbeddedView(int view_id) {
+SkCanvas* IOSSurfaceGL::CompositeEmbeddedView(int view_id,
+                                              const flutter::EmbeddedViewParams& params) {
   FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
   FML_CHECK(platform_views_controller != nullptr);
-  return platform_views_controller->CompositeEmbeddedView(view_id);
+  return platform_views_controller->CompositeEmbeddedView(view_id, params);
 }
 
 bool IOSSurfaceGL::SubmitFrame(GrContext* context) {

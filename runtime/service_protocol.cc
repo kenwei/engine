@@ -20,22 +20,21 @@
 
 namespace flutter {
 
-const std::string_view ServiceProtocol::kScreenshotExtensionName =
+const fml::StringView ServiceProtocol::kScreenshotExtensionName =
     "_flutter.screenshot";
-const std::string_view ServiceProtocol::kScreenshotSkpExtensionName =
+const fml::StringView ServiceProtocol::kScreenshotSkpExtensionName =
     "_flutter.screenshotSkp";
-const std::string_view ServiceProtocol::kRunInViewExtensionName =
+const fml::StringView ServiceProtocol::kRunInViewExtensionName =
     "_flutter.runInView";
-const std::string_view ServiceProtocol::kFlushUIThreadTasksExtensionName =
+const fml::StringView ServiceProtocol::kFlushUIThreadTasksExtensionName =
     "_flutter.flushUIThreadTasks";
-const std::string_view ServiceProtocol::kSetAssetBundlePathExtensionName =
+const fml::StringView ServiceProtocol::kSetAssetBundlePathExtensionName =
     "_flutter.setAssetBundlePath";
-const std::string_view ServiceProtocol::kGetDisplayRefreshRateExtensionName =
+const fml::StringView ServiceProtocol::kGetDisplayRefreshRateExtensionName =
     "_flutter.getDisplayRefreshRate";
 
-static constexpr std::string_view kViewIdPrefx = "_flutterView/";
-static constexpr std::string_view kListViewsExtensionName =
-    "_flutter.listViews";
+static constexpr fml::StringView kViewIdPrefx = "_flutterView/";
+static constexpr fml::StringView kListViewsExtensionName = "_flutter.listViews";
 
 ServiceProtocol::ServiceProtocol()
     : endpoints_({
@@ -102,7 +101,7 @@ bool ServiceProtocol::HandleMessage(const char* method,
                                     const char** json_object) {
   Handler::ServiceProtocolMap params;
   for (intptr_t i = 0; i < num_params; i++) {
-    params[std::string_view{param_keys[i]}] = std::string_view{param_values[i]};
+    params[fml::StringView{param_keys[i]}] = fml::StringView{param_values[i]};
   }
 
 #ifndef NDEBUG
@@ -115,7 +114,7 @@ bool ServiceProtocol::HandleMessage(const char* method,
 #endif  // NDEBUG
 
   rapidjson::Document document;
-  bool result = HandleMessage(std::string_view{method},                  //
+  bool result = HandleMessage(fml::StringView{method},                   //
                               params,                                    //
                               static_cast<ServiceProtocol*>(user_data),  //
                               document                                   //
@@ -133,7 +132,7 @@ bool ServiceProtocol::HandleMessage(const char* method,
   return result;
 }
 
-bool ServiceProtocol::HandleMessage(std::string_view method,
+bool ServiceProtocol::HandleMessage(fml::StringView method,
                                     const Handler::ServiceProtocolMap& params,
                                     ServiceProtocol* service_protocol,
                                     rapidjson::Document& response) {
@@ -148,7 +147,7 @@ bool ServiceProtocol::HandleMessage(std::string_view method,
 FML_WARN_UNUSED_RESULT
 static bool HandleMessageOnHandler(
     ServiceProtocol::Handler* handler,
-    std::string_view method,
+    fml::StringView method,
     const ServiceProtocol::Handler::ServiceProtocolMap& params,
     rapidjson::Document& document) {
   FML_DCHECK(handler);
@@ -171,7 +170,7 @@ static bool HandleMessageOnHandler(
   return result;
 }
 
-bool ServiceProtocol::HandleMessage(std::string_view method,
+bool ServiceProtocol::HandleMessage(fml::StringView method,
                                     const Handler::ServiceProtocolMap& params,
                                     rapidjson::Document& response) const {
   if (method == kListViewsExtensionName) {
@@ -189,7 +188,7 @@ bool ServiceProtocol::HandleMessage(std::string_view method,
   }
 
   // Find the handler by its "viewId" in the params.
-  auto view_id_param_found = params.find(std::string_view{"viewId"});
+  auto view_id_param_found = params.find(fml::StringView{"viewId"});
   if (view_id_param_found != params.end()) {
     auto* handler = reinterpret_cast<Handler*>(std::stoull(
         view_id_param_found->second.data() + kViewIdPrefx.size(), nullptr, 16));

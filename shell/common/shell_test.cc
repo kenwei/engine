@@ -11,7 +11,6 @@
 #include "flutter/fml/make_copyable.h"
 #include "flutter/fml/mapping.h"
 #include "flutter/runtime/dart_vm.h"
-#include "flutter/shell/gpu/gpu_surface_gl.h"
 #include "flutter/testing/testing.h"
 
 namespace flutter {
@@ -201,35 +200,21 @@ ShellTestPlatformView::~ShellTestPlatformView() = default;
 
 // |PlatformView|
 std::unique_ptr<Surface> ShellTestPlatformView::CreateRenderingSurface() {
-  return std::make_unique<GPUSurfaceGL>(this);
+  return std::make_unique<GPUSurfaceSoftware>(this);
 }
 
-// |GPUSurfaceGLDelegate|
-bool ShellTestPlatformView::GLContextMakeCurrent() {
-  return gl_surface_.MakeCurrent();
+// |GPUSurfaceSoftwareDelegate|
+sk_sp<SkSurface> ShellTestPlatformView::AcquireBackingStore(
+    const SkISize& size) {
+  SkImageInfo image_info = SkImageInfo::MakeN32Premul(
+      size.width(), size.height(), SkColorSpace::MakeSRGB());
+  return SkSurface::MakeRaster(image_info);
 }
 
-// |GPUSurfaceGLDelegate|
-bool ShellTestPlatformView::GLContextClearCurrent() {
-  return gl_surface_.ClearCurrent();
-}
-
-// |GPUSurfaceGLDelegate|
-bool ShellTestPlatformView::GLContextPresent() {
-  return gl_surface_.Present();
-}
-
-// |GPUSurfaceGLDelegate|
-intptr_t ShellTestPlatformView::GLContextFBO() const {
-  return gl_surface_.GetFramebuffer();
-}
-
-// |GPUSurfaceGLDelegate|
-GPUSurfaceGLDelegate::GLProcResolver ShellTestPlatformView::GetGLProcResolver()
-    const {
-  return [surface = &gl_surface_](const char* name) -> void* {
-    return surface->GetProcAddress(name);
-  };
+// |GPUSurfaceSoftwareDelegate|
+bool ShellTestPlatformView::PresentBackingStore(
+    sk_sp<SkSurface> backing_store) {
+  return true;
 }
 
 }  // namespace testing

@@ -17,7 +17,7 @@
 
 namespace flutter {
 
-enum MutatorType { clip_rect, clip_rrect, clip_path, transform, opacity };
+enum MutatorType { clip_rect, clip_rrect, clip_path, transform };
 
 // Stores mutation information like clipping or transform.
 //
@@ -42,9 +42,6 @@ class Mutator {
       case transform:
         matrix_ = other.matrix_;
         break;
-      case opacity:
-        alpha_ = other.alpha_;
-        break;
       default:
         break;
     }
@@ -56,31 +53,28 @@ class Mutator {
       : type_(clip_path), path_(new SkPath(path)) {}
   explicit Mutator(const SkMatrix& matrix)
       : type_(transform), matrix_(matrix) {}
-  explicit Mutator(const int& alpha) : type_(opacity), alpha_(alpha) {}
 
-  const MutatorType& GetType() const { return type_; }
-  const SkRect& GetRect() const { return rect_; }
-  const SkRRect& GetRRect() const { return rrect_; }
-  const SkPath& GetPath() const { return *path_; }
-  const SkMatrix& GetMatrix() const { return matrix_; }
-  const int& GetAlpha() const { return alpha_; }
-  float GetAlphaFloat() const { return (alpha_ / 255.0); }
+  const MutatorType& type() const { return type_; }
+  const SkRect& rect() const { return rect_; }
+  const SkRRect& rrect() const { return rrect_; }
+  const SkPath& path() const { return *path_; }
+  const SkMatrix& matrix() const { return matrix_; }
 
   bool operator==(const Mutator& other) const {
     if (type_ != other.type_) {
       return false;
     }
-    switch (type_) {
-      case clip_rect:
-        return rect_ == other.rect_;
-      case clip_rrect:
-        return rrect_ == other.rrect_;
-      case clip_path:
-        return *path_ == *other.path_;
-      case transform:
-        return matrix_ == other.matrix_;
-      case opacity:
-        return alpha_ == other.alpha_;
+    if (type_ == clip_rect && rect_ == other.rect_) {
+      return true;
+    }
+    if (type_ == clip_rrect && rrect_ == other.rrect_) {
+      return true;
+    }
+    if (type_ == clip_path && *path_ == *other.path_) {
+      return true;
+    }
+    if (type_ == transform && matrix_ == other.matrix_) {
+      return true;
     }
 
     return false;
@@ -88,7 +82,7 @@ class Mutator {
 
   bool operator!=(const Mutator& other) const { return !operator==(other); }
 
-  bool IsClipType() {
+  bool isClipType() {
     return type_ == clip_rect || type_ == clip_rrect || type_ == clip_path;
   }
 
@@ -106,7 +100,6 @@ class Mutator {
     SkRRect rrect_;
     SkMatrix matrix_;
     SkPath* path_;
-    int alpha_;
   };
 
 };  // Mutator
@@ -124,21 +117,21 @@ class MutatorsStack {
  public:
   MutatorsStack() = default;
 
-  void PushClipRect(const SkRect& rect);
-  void PushClipRRect(const SkRRect& rrect);
-  void PushClipPath(const SkPath& path);
-  void PushTransform(const SkMatrix& matrix);
-  void PushOpacity(const int& alpha);
+  void pushClipRect(const SkRect& rect);
+  void pushClipRRect(const SkRRect& rrect);
+  void pushClipPath(const SkPath& path);
+
+  void pushTransform(const SkMatrix& matrix);
 
   // Removes the `Mutator` on the top of the stack
   // and destroys it.
-  void Pop();
+  void pop();
 
   // Returns an iterator pointing to the top of the stack.
-  const std::vector<std::shared_ptr<Mutator>>::const_reverse_iterator Top()
+  const std::vector<std::shared_ptr<Mutator>>::const_reverse_iterator top()
       const;
   // Returns an iterator pointing to the bottom of the stack.
-  const std::vector<std::shared_ptr<Mutator>>::const_reverse_iterator Bottom()
+  const std::vector<std::shared_ptr<Mutator>>::const_reverse_iterator bottom()
       const;
 
   bool operator==(const MutatorsStack& other) const {
@@ -191,24 +184,15 @@ class ExternalViewEmbedder {
  public:
   ExternalViewEmbedder() = default;
 
-  // This will return true after pre-roll if any of the embedded views
-  // have mutated for last layer tree.
-  virtual bool HasPendingViewOperations() = 0;
-
-  // Call this in-lieu of |SubmitFrame| to clear pre-roll state and
-  // sets the stage for the next pre-roll.
-  virtual void CancelFrame() = 0;
-
   virtual void BeginFrame(SkISize frame_size) = 0;
 
-  virtual void PrerollCompositeEmbeddedView(
-      int view_id,
-      std::unique_ptr<EmbeddedViewParams> params) = 0;
+  virtual void PrerollCompositeEmbeddedView(int view_id) = 0;
 
   virtual std::vector<SkCanvas*> GetCurrentCanvases() = 0;
 
   // Must be called on the UI thread.
-  virtual SkCanvas* CompositeEmbeddedView(int view_id) = 0;
+  virtual SkCanvas* CompositeEmbeddedView(int view_id,
+                                          const EmbeddedViewParams& params) = 0;
 
   virtual bool SubmitFrame(GrContext* context);
 

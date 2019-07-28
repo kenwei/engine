@@ -6,8 +6,7 @@ part of engine;
 
 /// A canvas that renders to DOM elements and CSS properties.
 class DomCanvas extends EngineCanvas with SaveElementStackTracking {
-  @override
-  final html.Element rootElement = html.Element.tag('flt-dom-canvas');
+  final html.Element rootElement = new html.Element.tag('flt-dom-canvas');
 
   DomCanvas() {
     rootElement.style
@@ -44,7 +43,7 @@ class DomCanvas extends EngineCanvas with SaveElementStackTracking {
   @override
   void drawColor(ui.Color color, ui.BlendMode blendMode) {
     // TODO(yjbanov): implement blendMode
-    final html.Element box = html.Element.tag('draw-color');
+    html.Element box = html.Element.tag('draw-color');
     box.style
       ..position = 'absolute'
       ..top = '0'
@@ -68,18 +67,18 @@ class DomCanvas extends EngineCanvas with SaveElementStackTracking {
   @override
   void drawRect(ui.Rect rect, ui.PaintData paint) {
     assert(paint.shader == null);
-    final html.Element rectangle = html.Element.tag('draw-rect');
+    final rectangle = html.Element.tag('draw-rect');
     assert(() {
       rectangle.setAttribute('flt-rect', '$rect');
       rectangle.setAttribute('flt-paint', '$paint');
       return true;
     }());
     String effectiveTransform;
-    final bool isStroke = paint.style == ui.PaintingStyle.stroke;
-    final double left = math.min(rect.left, rect.right);
-    final double right = math.max(rect.left, rect.right);
-    final double top = math.min(rect.top, rect.bottom);
-    final double bottom = math.max(rect.top, rect.bottom);
+    bool isStroke = paint.style == ui.PaintingStyle.stroke;
+    var left = math.min(rect.left, rect.right);
+    var right = math.max(rect.left, rect.right);
+    var top = math.min(rect.top, rect.bottom);
+    var bottom = math.max(rect.top, rect.bottom);
     if (currentTransform.isIdentity()) {
       if (isStroke) {
         effectiveTransform =
@@ -89,7 +88,7 @@ class DomCanvas extends EngineCanvas with SaveElementStackTracking {
       }
     } else {
       // Clone to avoid mutating _transform.
-      final Matrix4 translated = currentTransform.clone();
+      Matrix4 translated = currentTransform.clone();
       if (isStroke) {
         translated.translate(
             left - (paint.strokeWidth / 2.0), top - (paint.strokeWidth / 2.0));
@@ -98,7 +97,7 @@ class DomCanvas extends EngineCanvas with SaveElementStackTracking {
       }
       effectiveTransform = matrix4ToCssTransform(translated);
     }
-    final html.CssStyleDeclaration style = rectangle.style;
+    var style = rectangle.style;
     style
       ..position = 'absolute'
       ..transformOrigin = '0 0 0'
@@ -114,7 +113,7 @@ class DomCanvas extends EngineCanvas with SaveElementStackTracking {
       style
         ..width = '${right - left - paint.strokeWidth}px'
         ..height = '${bottom - top - paint.strokeWidth}px'
-        ..border = '${paint.strokeWidth}px solid $cssColor';
+        ..border = '${paint.strokeWidth}px solid ${cssColor}';
     } else {
       style
         ..width = '${right - left}px'

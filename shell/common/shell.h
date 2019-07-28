@@ -6,7 +6,6 @@
 #define SHELL_COMMON_SHELL_H_
 
 #include <functional>
-#include <string_view>
 #include <unordered_map>
 
 #include "flutter/common/settings.h"
@@ -17,7 +16,7 @@
 #include "flutter/fml/memory/ref_ptr.h"
 #include "flutter/fml/memory/thread_checker.h"
 #include "flutter/fml/memory/weak_ptr.h"
-#include "flutter/fml/status.h"
+#include "flutter/fml/string_view.h"
 #include "flutter/fml/synchronization/thread_annotations.h"
 #include "flutter/fml/synchronization/waitable_event.h"
 #include "flutter/fml/thread.h"
@@ -244,15 +243,6 @@ class Shell final : public PlatformView::Delegate,
   Rasterizer::Screenshot Screenshot(Rasterizer::ScreenshotType type,
                                     bool base64_encode);
 
-  //----------------------------------------------------------------------------
-  /// @brief   Pauses the calling thread until the first frame is presented.
-  ///
-  /// @return  'kOk' when the first frame has been presented before the timeout
-  ///          successfully, 'kFailedPrecondition' if called from the GPU or UI
-  ///          thread, 'kDeadlineExceeded' if there is a timeout.
-  ///
-  fml::Status WaitForFirstFrame(fml::TimeDelta timeout);
-
  private:
   using ServiceProtocolHandler =
       std::function<bool(const ServiceProtocol::Handler::ServiceProtocolMap&,
@@ -271,7 +261,7 @@ class Shell final : public PlatformView::Delegate,
   fml::WeakPtr<PlatformView>
       weak_platform_view_;  // to be shared across threads
 
-  std::unordered_map<std::string_view,  // method
+  std::unordered_map<std::string,  // method
                      std::pair<fml::RefPtr<fml::TaskRunner>,
                                ServiceProtocolHandler>  // task-runner/function
                                                         // pair
@@ -281,9 +271,6 @@ class Shell final : public PlatformView::Delegate,
   uint64_t next_pointer_flow_id_ = 0;
 
   bool first_frame_rasterized_ = false;
-  std::atomic<bool> waiting_for_first_frame_ = true;
-  std::mutex waiting_for_first_frame_mutex_;
-  std::condition_variable waiting_for_first_frame_condition_;
 
   // Written in the UI thread and read from the GPU thread. Hence make it
   // atomic.
@@ -403,11 +390,11 @@ class Shell final : public PlatformView::Delegate,
 
   // |ServiceProtocol::Handler|
   fml::RefPtr<fml::TaskRunner> GetServiceProtocolHandlerTaskRunner(
-      std::string_view method) const override;
+      fml::StringView method) const override;
 
   // |ServiceProtocol::Handler|
   bool HandleServiceProtocolMessage(
-      std::string_view method,  // one if the extension names specified above.
+      fml::StringView method,  // one if the extension names specified above.
       const ServiceProtocolMap& params,
       rapidjson::Document& response) override;
 

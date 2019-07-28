@@ -7,19 +7,18 @@
 
 #include "flutter/flow/layers/container_layer.h"
 
-#include "third_party/skia/include/core/SkColorFilter.h"
-
 namespace flutter {
 
 class ColorFilterLayer : public ContainerLayer {
  public:
-  ColorFilterLayer(sk_sp<SkColorFilter> filter);
+  ColorFilterLayer(SkColor color, SkBlendMode blend_mode);
   ~ColorFilterLayer() override;
 
   void Paint(PaintContext& context) const override;
 
  private:
-  sk_sp<SkColorFilter> filter_;
+  SkColor color_;
+  SkBlendMode blend_mode_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(ColorFilterLayer);
 };

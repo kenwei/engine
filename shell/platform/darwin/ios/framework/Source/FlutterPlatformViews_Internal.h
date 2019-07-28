@@ -42,6 +42,7 @@
 @end
 
 namespace flutter {
+
 // Converts a SkMatrix to CATransform3D.
 // Certain fields are ignored in CATransform3D since SkMatrix is 3x3 and CATransform3D is 4x4.
 CATransform3D GetCATransform3DFromSkMatrix(const SkMatrix& matrix);
@@ -79,23 +80,18 @@ class FlutterPlatformViewsController {
 
   void SetFrameSize(SkISize frame_size);
 
-  bool HasPendingViewOperations();
-
-  void CancelFrame();
-
-  void PrerollCompositeEmbeddedView(int view_id,
-                                    std::unique_ptr<flutter::EmbeddedViewParams> params);
+  void PrerollCompositeEmbeddedView(int view_id);
 
   // Returns the `FlutterPlatformView` object associated with the view_id.
   //
   // If the `FlutterPlatformViewsController` does not contain any `FlutterPlatformView` object or
-  // a `FlutterPlatformView` object asscociated with the view_id cannot be found, the method
-  // returns nil.
+  // a `FlutterPlatformView` object asscociated with the view_id cannot be found, the method returns
+  // nil.
   NSObject<FlutterPlatformView>* GetPlatformViewByID(int view_id);
 
   std::vector<SkCanvas*> GetCurrentCanvases();
 
-  SkCanvas* CompositeEmbeddedView(int view_id);
+  SkCanvas* CompositeEmbeddedView(int view_id, const flutter::EmbeddedViewParams& params);
 
   // Discards all platform views instances and auxiliary resources.
   void Reset();
@@ -113,8 +109,8 @@ class FlutterPlatformViewsController {
   std::map<std::string, fml::scoped_nsobject<NSObject<FlutterPlatformViewFactory>>> factories_;
   std::map<int64_t, fml::scoped_nsobject<NSObject<FlutterPlatformView>>> views_;
   std::map<int64_t, fml::scoped_nsobject<FlutterTouchInterceptingView>> touch_interceptors_;
-  // Mapping a platform view ID to the top most parent view (root_view) who is a direct child to
-  // the `flutter_view_`.
+  // Mapping a platform view ID to the top most parent view (root_view) who is a direct child to the
+  // `flutter_view_`.
   //
   // The platform view with the view ID is a child of the root view; If the platform view is not
   // clipped, and no clipping view is added, the root view will be the intercepting view.
@@ -142,9 +138,6 @@ class FlutterPlatformViewsController {
   // The latest composition order that was presented in Present().
   std::vector<int64_t> active_composition_order_;
 
-  // Only compoiste platform views in this set.
-  std::unordered_set<int64_t> views_to_recomposite_;
-
   std::map<int64_t, std::unique_ptr<SkPictureRecorder>> picture_recorders_;
 
   void OnCreate(FlutterMethodCall* call, FlutterResult& result);
@@ -159,7 +152,6 @@ class FlutterPlatformViewsController {
   void EnsureGLOverlayInitialized(int64_t overlay_id,
                                   std::shared_ptr<IOSGLContext> gl_context,
                                   GrContext* gr_context);
-
   // Traverse the `mutators_stack` and return the number of clip operations.
   int CountClips(const MutatorsStack& mutators_stack);
 
@@ -180,10 +172,10 @@ class FlutterPlatformViewsController {
   // Applies the mutators in the mutators_stack to the UIView chain that was constructed by
   // `ReconstructClipViewsChain`
   //
-  // Clips are applied to the super view with a CALayer mask. Transforms are applied to the
-  // current view that's at the head of the chain. For example the following mutators stack [T_1,
-  // C_2, T_3, T_4, C_5, T_6] where T denotes a transform and C denotes a clip, will result in the
-  // following UIView tree:
+  // Clips are applied to the super view with a CALayer mask. Transforms are applied to the current
+  // view that's at the head of the chain. For example the following mutators stack [T_1, C_2, T_3,
+  // T_4, C_5, T_6] where T denotes a transform and C denotes a clip, will result in the following
+  // UIView tree:
   //
   // C_2 -> C_5 -> PLATFORM_VIEW
   // (PLATFORM_VIEW is a subview of C_5 which is a subview of C_2)
@@ -192,7 +184,8 @@ class FlutterPlatformViewsController {
   //
   // After each clip operation, we update the head to the super view of the current head.
   void ApplyMutators(const MutatorsStack& mutators_stack, UIView* embedded_view);
-  void CompositeWithParams(int view_id, const EmbeddedViewParams& params);
+
+  void CompositeWithParams(int view_id, const flutter::EmbeddedViewParams& params);
 
   FML_DISALLOW_COPY_AND_ASSIGN(FlutterPlatformViewsController);
 };

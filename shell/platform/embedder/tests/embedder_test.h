@@ -10,12 +10,11 @@
 #include "flutter/fml/macros.h"
 #include "flutter/shell/platform/embedder/tests/embedder_context.h"
 #include "flutter/testing/testing.h"
-#include "flutter/testing/thread_test.h"
 
 namespace flutter {
 namespace testing {
 
-class EmbedderTest : public ThreadTest {
+class EmbedderTest : public ::testing::Test {
  public:
   EmbedderTest();
 

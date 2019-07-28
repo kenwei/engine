@@ -253,7 +253,6 @@ size_t DartVM::GetVMLaunchCount() {
 DartVM::DartVM(std::shared_ptr<const DartVMData> vm_data,
                std::shared_ptr<IsolateNameServer> isolate_name_server)
     : settings_(vm_data->GetSettings()),
-      concurrent_message_loop_(fml::ConcurrentMessageLoop::Create()),
       vm_data_(vm_data),
       isolate_name_server_(std::move(isolate_name_server)),
       service_protocol_(std::make_shared<ServiceProtocol>()) {
@@ -367,13 +366,12 @@ DartVM::DartVM(std::shared_ptr<const DartVMData> vm_data,
     params.vm_snapshot_data = vm_data_->GetVMSnapshot().GetDataMapping();
     params.vm_snapshot_instructions =
         vm_data_->GetVMSnapshot().GetInstructionsMapping();
-    params.create_group = reinterpret_cast<decltype(params.create_group)>(
-        DartIsolate::DartIsolateGroupCreateCallback);
-    params.shutdown_isolate =
-        reinterpret_cast<decltype(params.shutdown_isolate)>(
-            DartIsolate::DartIsolateShutdownCallback);
-    params.cleanup_group = reinterpret_cast<decltype(params.cleanup_group)>(
-        DartIsolate::DartIsolateGroupCleanupCallback);
+    params.create = reinterpret_cast<decltype(params.create)>(
+        DartIsolate::DartIsolateCreateCallback);
+    params.shutdown = reinterpret_cast<decltype(params.shutdown)>(
+        DartIsolate::DartIsolateShutdownCallback);
+    params.cleanup = reinterpret_cast<decltype(params.cleanup)>(
+        DartIsolate::DartIsolateCleanupCallback);
     params.thread_exit = ThreadExitCallback;
     params.get_service_assets = GetVMServiceAssetsArchiveCallback;
     params.entropy_source = dart::bin::GetEntropy;
@@ -451,11 +449,6 @@ std::shared_ptr<ServiceProtocol> DartVM::GetServiceProtocol() const {
 
 std::shared_ptr<IsolateNameServer> DartVM::GetIsolateNameServer() const {
   return isolate_name_server_;
-}
-
-std::shared_ptr<fml::ConcurrentTaskRunner>
-DartVM::GetConcurrentWorkerTaskRunner() const {
-  return concurrent_message_loop_->GetTaskRunner();
 }
 
 }  // namespace flutter

@@ -135,30 +135,16 @@ flutter::ExternalViewEmbedder* IOSSurfaceSoftware::GetExternalViewEmbedder() {
   }
 }
 
-void IOSSurfaceSoftware::CancelFrame() {
-  FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
-  FML_CHECK(platform_views_controller != nullptr);
-  platform_views_controller->CancelFrame();
-}
-
-bool IOSSurfaceSoftware::HasPendingViewOperations() {
-  FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
-  FML_CHECK(platform_views_controller != nullptr);
-  return platform_views_controller->HasPendingViewOperations();
-}
-
 void IOSSurfaceSoftware::BeginFrame(SkISize frame_size) {
   FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
   FML_CHECK(platform_views_controller != nullptr);
   platform_views_controller->SetFrameSize(frame_size);
 }
 
-void IOSSurfaceSoftware::PrerollCompositeEmbeddedView(
-    int view_id,
-    std::unique_ptr<flutter::EmbeddedViewParams> params) {
+void IOSSurfaceSoftware::PrerollCompositeEmbeddedView(int view_id) {
   FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
   FML_CHECK(platform_views_controller != nullptr);
-  platform_views_controller->PrerollCompositeEmbeddedView(view_id, std::move(params));
+  platform_views_controller->PrerollCompositeEmbeddedView(view_id);
 }
 
 std::vector<SkCanvas*> IOSSurfaceSoftware::GetCurrentCanvases() {
@@ -167,10 +153,11 @@ std::vector<SkCanvas*> IOSSurfaceSoftware::GetCurrentCanvases() {
   return platform_views_controller->GetCurrentCanvases();
 }
 
-SkCanvas* IOSSurfaceSoftware::CompositeEmbeddedView(int view_id) {
+SkCanvas* IOSSurfaceSoftware::CompositeEmbeddedView(int view_id,
+                                                    const flutter::EmbeddedViewParams& params) {
   FlutterPlatformViewsController* platform_views_controller = GetPlatformViewsController();
   FML_CHECK(platform_views_controller != nullptr);
-  return platform_views_controller->CompositeEmbeddedView(view_id);
+  return platform_views_controller->CompositeEmbeddedView(view_id, params);
 }
 
 bool IOSSurfaceSoftware::SubmitFrame(GrContext* context) {

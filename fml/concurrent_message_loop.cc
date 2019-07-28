@@ -11,14 +11,10 @@
 
 namespace fml {
 
-std::shared_ptr<ConcurrentMessageLoop> ConcurrentMessageLoop::Create(
-    size_t worker_count) {
-  return std::shared_ptr<ConcurrentMessageLoop>{
-      new ConcurrentMessageLoop(worker_count)};
-}
-
-ConcurrentMessageLoop::ConcurrentMessageLoop(size_t worker_count)
-    : worker_count_(std::max<size_t>(worker_count, 1ul)) {
+ConcurrentMessageLoop::ConcurrentMessageLoop()
+    : worker_count_(std::max(std::thread::hardware_concurrency(), 1u)),
+      shutdown_latch_(worker_count_),
+      shutdown_(false) {
   for (size_t i = 0; i < worker_count_; ++i) {
     workers_.emplace_back([i, this]() {
       fml::Thread::SetCurrentThreadName(
@@ -30,97 +26,45 @@ ConcurrentMessageLoop::ConcurrentMessageLoop(size_t worker_count)
 
 ConcurrentMessageLoop::~ConcurrentMessageLoop() {
   Terminate();
+  shutdown_latch_.Wait();
   for (auto& worker : workers_) {
     worker.join();
   }
 }
 
-size_t ConcurrentMessageLoop::GetWorkerCount() const {
-  return worker_count_;
+// |fml::MessageLoopImpl|
+void ConcurrentMessageLoop::Run() {
+  FML_CHECK(false);
 }
 
-std::shared_ptr<ConcurrentTaskRunner> ConcurrentMessageLoop::GetTaskRunner() {
-  return std::make_shared<ConcurrentTaskRunner>(weak_from_this());
+// |fml::MessageLoopImpl|
+void ConcurrentMessageLoop::Terminate() {
+  std::scoped_lock lock(wait_condition_mutex_);
+  shutdown_ = true;
+  wait_condition_.notify_all();
 }
 
-void ConcurrentMessageLoop::PostTask(fml::closure task) {
-  if (!task) {
-    return;
-  }
-
-  std::unique_lock lock(tasks_mutex_);
-
-  // Don't just drop tasks on the floor in case of shutdown.
-  if (shutdown_) {
-    FML_DLOG(WARNING)
-        << "Tried to post a task to shutdown concurrent message "
-           "loop. The task will be executed on the callers thread.";
-    lock.unlock();
-    task();
-    return;
-  }
-
-  tasks_.push(task);
-
-  // Unlock the mutex before notifying the condition variable because that mutex
-  // has to be acquired on the other thread anyway. Waiting in this scope till
-  // it is acquired there is a pessimization.
-  lock.unlock();
-
-  tasks_condition_.notify_one();
+// |fml::MessageLoopImpl|
+void ConcurrentMessageLoop::WakeUp(fml::TimePoint time_point) {
+  // Assume that the clocks are not the same.
+  const auto duration = std::chrono::nanoseconds(
+      (time_point - fml::TimePoint::Now()).ToNanoseconds());
+  next_wake_ = std::chrono::high_resolution_clock::now() + duration;
+  wait_condition_.notify_all();
 }
 
 void ConcurrentMessageLoop::WorkerMain() {
-  while (true) {
-    std::unique_lock lock(tasks_mutex_);
-    tasks_condition_.wait(lock,
-                          [&]() { return tasks_.size() > 0 || shutdown_; });
-
-    if (tasks_.size() == 0) {
-      // This can only be caused by shutdown.
-      FML_DCHECK(shutdown_);
-      break;
+  while (!shutdown_) {
+    std::unique_lock<std::mutex> lock(wait_condition_mutex_);
+    if (!shutdown_) {
+      wait_condition_.wait(lock);
     }
-
-    auto task = tasks_.front();
-    tasks_.pop();
-
-    // Don't hold onto the mutex while the task is being executed as it could
-    // itself try to post another tasks to this message loop.
-    lock.unlock();
-
-    TRACE_EVENT0("flutter", "ConcurrentWorkerWake");
-    // Execute the one tasks we woke up for.
-    task();
-  }
-}
-
-void ConcurrentMessageLoop::Terminate() {
-  std::scoped_lock lock(tasks_mutex_);
-  shutdown_ = true;
-  tasks_condition_.notify_all();
-}
-
-ConcurrentTaskRunner::ConcurrentTaskRunner(
-    std::weak_ptr<ConcurrentMessageLoop> weak_loop)
-    : weak_loop_(std::move(weak_loop)) {}
-
-ConcurrentTaskRunner::~ConcurrentTaskRunner() = default;
-
-void ConcurrentTaskRunner::PostTask(fml::closure task) {
-  if (!task) {
-    return;
+    TRACE_EVENT0("fml", "ConcurrentWorkerWake");
+    RunSingleExpiredTaskNow();
   }
 
-  if (auto loop = weak_loop_.lock()) {
-    loop->PostTask(task);
-    return;
-  }
-
-  FML_DLOG(WARNING)
-      << "Tried to post to a concurrent message loop that has already died. "
-         "Executing the task on the callers thread.";
-  task();
+  RunExpiredTasksNow();
+  shutdown_latch_.CountDown();
 }
 
 }  // namespace fml

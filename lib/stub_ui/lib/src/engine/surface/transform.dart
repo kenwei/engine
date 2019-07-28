@@ -5,10 +5,8 @@
 part of engine;
 
 /// A surface that transforms its children using CSS transform.
-class PersistedTransform extends PersistedContainerSurface
-    implements ui.TransformEngineLayer {
-  PersistedTransform(PersistedTransform oldLayer, this.matrix4)
-      : super(oldLayer);
+class PersistedTransform extends PersistedContainerSurface implements ui.TransformEngineLayer {
+  PersistedTransform(Object paintedBy, this.matrix4) : super(paintedBy);
 
   final Float64List matrix4;
 

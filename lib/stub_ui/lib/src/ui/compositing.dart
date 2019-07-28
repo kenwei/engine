@@ -23,7 +23,7 @@ class Scene {
   /// This is a slow operation that is performed on a background thread.
   Future<Image> toImage(int width, int height) {
     if (width <= 0 || height <= 0) {
-      throw Exception('Invalid image dimensions.');
+      throw new Exception('Invalid image dimensions.');
     }
     throw UnsupportedError('toImage is not supported on the Web');
     // TODO(flutter_web): Implement [_toImage].
@@ -121,17 +121,18 @@ abstract class PhysicalShapeEngineLayer implements EngineLayer {}
 /// [Picture] using a [PictureRecorder] and a [Canvas], and then add
 /// it to the scene using [addPicture].
 class SceneBuilder {
+  static const webOnlyUseLayerSceneBuilder = false;
+
   /// Creates an empty [SceneBuilder] object.
   factory SceneBuilder() {
-    if (engine.experimentalUseSkia) {
+    if (webOnlyUseLayerSceneBuilder) {
       return engine.LayerSceneBuilder();
     } else {
       return SceneBuilder._();
     }
   }
-
   SceneBuilder._() {
-    _surfaceStack.add(engine.PersistedScene(_lastFrameScene));
+    _surfaceStack.add(engine.PersistedScene());
   }
 
   factory SceneBuilder.layer() = engine.LayerSceneBuilder;
@@ -145,17 +146,14 @@ class SceneBuilder {
   engine.PersistedScene get _persistedScene {
     assert(() {
       if (_surfaceStack.length != 1) {
-        final String surfacePrintout = _surfaceStack
-            .map<Type>((engine.PersistedContainerSurface surface) =>
-                surface.runtimeType)
-            .toList()
-            .join(', ');
+        final surfacePrintout =
+            _surfaceStack.map((l) => l.runtimeType).toList().join(', ');
         throw Exception('Incorrect sequence of push/pop operations while '
             'building scene surfaces. After building the scene the persisted '
             'surface stack must contain a single element which corresponds '
             'to the scene itself (_PersistedScene). All other surfaces '
             'should have been popped off the stack. Found the following '
-            'surfaces in the stack:\n$surfacePrintout');
+            'surfaces in the stack:\n${surfacePrintout}');
       }
       return true;
     }());
@@ -166,13 +164,6 @@ class SceneBuilder {
   engine.PersistedContainerSurface get _currentSurface => _surfaceStack.last;
 
   EngineLayer _pushSurface(engine.PersistedContainerSurface surface) {
-    // Only attempt to update if the update is requested and the surface is in
-    // the live tree.
-    if (surface.oldLayer != null) {
-      assert(surface.oldLayer.runtimeType == surface.runtimeType);
-      assert(surface.oldLayer.isActive);
-      surface.oldLayer.state = engine.PersistedSurfaceState.pendingUpdate;
-    }
     _adoptSurface(surface);
     _surfaceStack.add(surface);
     return surface;
@@ -191,9 +182,8 @@ class SceneBuilder {
   /// This is equivalent to [pushTransform] with a matrix with only translation.
   ///
   /// See [pop] for details about the operation stack.
-  OffsetEngineLayer pushOffset(double dx, double dy,
-      {OffsetEngineLayer oldLayer}) {
-    return _pushSurface(engine.PersistedOffset(oldLayer, dx, dy));
+  OffsetEngineLayer pushOffset(double dx, double dy, { OffsetEngineLayer oldLayer }) {
+    return _pushSurface(engine.PersistedOffset(null, dx, dy));
   }
 
   /// Pushes a transform operation onto the operation stack.
@@ -201,15 +191,14 @@ class SceneBuilder {
   /// The objects are transformed by the given matrix before rasterization.
   ///
   /// See [pop] for details about the operation stack.
-  TransformEngineLayer pushTransform(Float64List matrix4,
-      {TransformEngineLayer oldLayer}) {
+  TransformEngineLayer pushTransform(Float64List matrix4, { TransformEngineLayer oldLayer }) {
     if (matrix4 == null) {
-      throw ArgumentError('"matrix4" argument cannot be null');
+      throw new ArgumentError('"matrix4" argument cannot be null');
     }
     if (matrix4.length != 16) {
-      throw ArgumentError('"matrix4" must have 16 entries.');
+      throw new ArgumentError('"matrix4" must have 16 entries.');
     }
-    return _pushSurface(engine.PersistedTransform(oldLayer, matrix4));
+    return _pushSurface(engine.PersistedTransform(null, matrix4));
   }
 
   /// Pushes a rectangular clip operation onto the operation stack.
@@ -219,10 +208,10 @@ class SceneBuilder {
   /// See [pop] for details about the operation stack, and [Clip] for different clip modes.
   /// By default, the clip will be anti-aliased (clip = [Clip.antiAlias]).
   ClipRectEngineLayer pushClipRect(Rect rect,
-      {Clip clipBehavior = Clip.antiAlias, ClipRectEngineLayer oldLayer}) {
+      {Clip clipBehavior = Clip.antiAlias, ClipRectEngineLayer oldLayer }) {
     assert(clipBehavior != null);
     assert(clipBehavior != Clip.none);
-    return _pushSurface(engine.PersistedClipRect(oldLayer, rect));
+    return _pushSurface(engine.PersistedClipRect(null, rect));
   }
 
   /// Pushes a rounded-rectangular clip operation onto the operation stack.
@@ -231,9 +220,9 @@ class SceneBuilder {
   ///
   /// See [pop] for details about the operation stack.
   ClipRRectEngineLayer pushClipRRect(RRect rrect,
-      {Clip clipBehavior, ClipRRectEngineLayer oldLayer}) {
+      {Clip clipBehavior, ClipRRectEngineLayer oldLayer }) {
     return _pushSurface(
-        engine.PersistedClipRRect(oldLayer, rrect, clipBehavior));
+        engine.PersistedClipRRect(null, rrect, clipBehavior));
   }
 
   /// Pushes a path clip operation onto the operation stack.
@@ -242,10 +231,11 @@ class SceneBuilder {
   ///
   /// See [pop] for details about the operation stack.
   ClipPathEngineLayer pushClipPath(Path path,
-      {Clip clipBehavior = Clip.antiAlias, ClipPathEngineLayer oldLayer}) {
+      {Clip clipBehavior = Clip.antiAlias, ClipPathEngineLayer oldLayer }) {
     assert(clipBehavior != null);
     assert(clipBehavior != Clip.none);
-    return _pushSurface(engine.PersistedClipPath(oldLayer, path, clipBehavior));
+    return _pushSurface(
+        engine.PersistedClipPath(null, path, clipBehavior));
   }
 
   /// Pushes an opacity operation onto the operation stack.
@@ -258,7 +248,7 @@ class SceneBuilder {
   /// See [pop] for details about the operation stack.
   OpacityEngineLayer pushOpacity(int alpha,
       {Offset offset = Offset.zero, OpacityEngineLayer oldLayer}) {
-    return _pushSurface(engine.PersistedOpacity(oldLayer, alpha, offset));
+    return _pushSurface(engine.PersistedOpacity(null, alpha, offset));
   }
 
   /// Pushes a color filter operation onto the operation stack.
@@ -267,9 +257,8 @@ class SceneBuilder {
   /// blend mode.
   ///
   /// See [pop] for details about the operation stack.
-  ColorFilterEngineLayer pushColorFilter(ColorFilter filter,
-      {ColorFilterEngineLayer oldLayer}) {
-    throw UnimplementedError();
+  ColorFilterEngineLayer pushColorFilter(Color color, BlendMode blendMode, { ColorFilterEngineLayer oldLayer }) {
+    throw new UnimplementedError();
   }
 
   /// Pushes a backdrop filter operation onto the operation stack.
@@ -278,9 +267,8 @@ class SceneBuilder {
   /// rasterizing the given objects.
   ///
   /// See [pop] for details about the operation stack.
-  BackdropFilterEngineLayer pushBackdropFilter(ImageFilter filter,
-      {BackdropFilterEngineLayer oldLayer}) {
-    return _pushSurface(engine.PersistedBackdropFilter(oldLayer, filter));
+  BackdropFilterEngineLayer pushBackdropFilter(ImageFilter filter, { BackdropFilterEngineLayer oldLayer }) {
+    throw new UnimplementedError();
   }
 
   /// Pushes a shader mask operation onto the operation stack.
@@ -289,10 +277,8 @@ class SceneBuilder {
   /// rectangle using the given blend mode.
   ///
   /// See [pop] for details about the operation stack.
-  ShaderMaskEngineLayer pushShaderMask(
-      Shader shader, Rect maskRect, BlendMode blendMode,
-      {ShaderMaskEngineLayer oldLayer}) {
-    throw UnimplementedError();
+  ShaderMaskEngineLayer pushShaderMask(Shader shader, Rect maskRect, BlendMode blendMode, { ShaderMaskEngineLayer oldLayer }) {
+    throw new UnimplementedError();
   }
 
   /// Pushes a physical layer operation for an arbitrary shape onto the
@@ -316,7 +302,7 @@ class SceneBuilder {
     PhysicalShapeEngineLayer oldLayer,
   }) {
     return _pushSurface(engine.PersistedPhysicalShape(
-      oldLayer,
+      null,
       path,
       elevation,
       color.value,
@@ -334,9 +320,13 @@ class SceneBuilder {
   /// the rendering layer of Flutter's framework, once this is called, there's
   /// no need to call [addToScene] for its children layers.
   void addRetained(EngineLayer retainedLayer) {
-    final engine.PersistedContainerSurface retainedSurface = retainedLayer;
-    assert(retainedSurface.isActive || retainedSurface.isReleased);
-    retainedSurface.tryRetain();
+    engine.PersistedContainerSurface retainedSurface = retainedLayer;
+
+    // Request that the layer is retained only if it hasn't been recycled yet.
+    if (retainedSurface.rootElement != null) {
+      retainedSurface.reuseStrategy =
+          engine.PersistedSurfaceReuseStrategy.retain;
+    }
     _adoptSurface(retainedSurface);
   }
 
@@ -375,8 +365,8 @@ class SceneBuilder {
   /// See also the [PerformanceOverlayOption] enum in the rendering library.
   /// for more details.
   void addPerformanceOverlay(int enabledOptions, Rect bounds) {
-    _addPerformanceOverlay(
-        enabledOptions, bounds.left, bounds.right, bounds.top, bounds.bottom);
+    _addPerformanceOverlay(enabledOptions, bounds.left, bounds.right,
+        bounds.top, bounds.bottom, null);
   }
 
   /// Whether we've already warned the user about the lack of the performance
@@ -386,7 +376,7 @@ class SceneBuilder {
   static bool _webOnlyDidWarnAboutPerformanceOverlay = false;
 
   void _addPerformanceOverlay(int enabledOptions, double left, double right,
-      double top, double bottom) {
+      double top, double bottom, Object webOnlyPaintedBy) {
     if (!_webOnlyDidWarnAboutPerformanceOverlay) {
       _webOnlyDidWarnAboutPerformanceOverlay = true;
       html.window.console
@@ -397,21 +387,20 @@ class SceneBuilder {
   /// Adds a [Picture] to the scene.
   ///
   /// The picture is rasterized at the given offset.
-  void addPicture(
-    Offset offset,
-    Picture picture, {
-    bool isComplexHint = false,
-    bool willChangeHint = false,
-  }) {
+  void addPicture(Offset offset, Picture picture,
+      {bool isComplexHint = false,
+      bool willChangeHint = false}) {
     int hints = 0;
-    if (isComplexHint) {
-      hints |= 1;
-    }
-    if (willChangeHint) {
-      hints |= 2;
-    }
-    _addSurface(
-        engine.persistedPictureFactory(offset.dx, offset.dy, picture, hints));
+    if (isComplexHint) hints |= 1;
+    if (willChangeHint) hints |= 2;
+    _addPicture(offset.dx, offset.dy, picture, hints,
+        webOnlyPaintedBy: null);
+  }
+
+  void _addPicture(double dx, double dy, Picture picture, int hints,
+      {Object webOnlyPaintedBy}) {
+    _addSurface(engine.persistedPictureFactory(
+        webOnlyPaintedBy, dx, dy, picture, hints));
   }
 
   /// Adds a backend texture to the scene.
@@ -422,17 +411,15 @@ class SceneBuilder {
       {Offset offset = Offset.zero,
       double width = 0.0,
       double height = 0.0,
-      bool freeze = false}) {
+      bool freeze = false,}) {
     assert(offset != null, 'Offset argument was null');
-    _addTexture(offset.dx, offset.dy, width, height, textureId);
+    _addTexture(
+        offset.dx, offset.dy, width, height, textureId, null);
   }
 
-  void _addTexture(
-      double dx, double dy, double width, double height, int textureId) {
-    // In test mode, allow this to be a no-op.
-    if (!debugEmulateFlutterTesterEnvironment) {
-      throw UnimplementedError('Textures are not supported in Flutter Web');
-    }
+  void _addTexture(double dx, double dy, double width, double height,
+      int textureId, Object webOnlyPaintedBy) {
+    throw new UnimplementedError();
   }
 
   /// Adds a platform view (e.g an iOS UIView) to the scene.
@@ -451,24 +438,15 @@ class SceneBuilder {
   /// With a platform view in the scene, Quartz has to composite the two Flutter surfaces and the
   /// embedded UIView. In addition to that, on iOS versions greater than 9, the Flutter frames are
   /// synchronized with the UIView frames adding additional performance overhead.
-  void addPlatformView(
-    int viewId, {
-    Offset offset = Offset.zero,
-    double width = 0.0,
-    double height = 0.0,
-  }) {
+  void addPlatformView(int viewId,
+      {Offset offset = Offset.zero, double width = 0.0, double height = 0.0}) {
     assert(offset != null, 'Offset argument was null');
     _addPlatformView(offset.dx, offset.dy, width, height, viewId);
   }
 
   void _addPlatformView(
-    double dx,
-    double dy,
-    double width,
-    double height,
-    int viewId,
-  ) {
-    _addSurface(engine.PersistedPlatformView(viewId, dx, dy, width, height));
+      double dx, double dy, double width, double height, int viewId) {
+    throw new UnimplementedError();
   }
 
   /// (Fuchsia-only) Adds a scene rendered by another application to the scene
@@ -484,7 +462,7 @@ class SceneBuilder {
 
   void _addChildScene(double dx, double dy, double width, double height,
       SceneHost sceneHost, bool hitTestable) {
-    throw UnimplementedError();
+    throw new UnimplementedError();
   }
 
   /// Sets a threshold after which additional debugging information should be
@@ -561,7 +539,6 @@ class SceneBuilder {
   /// After calling this function, the scene builder object is invalid and
   /// cannot be used further.
   Scene build() {
-    _persistedScene.preroll();
     if (_lastFrameScene == null) {
       _persistedScene.build();
     } else {
@@ -569,21 +546,14 @@ class SceneBuilder {
     }
     engine.commitScene(_persistedScene);
     _lastFrameScene = _persistedScene;
-    return Scene._(_persistedScene.rootElement);
-  }
-
-  /// Set properties on the linked scene.  These properties include its bounds,
-  /// as well as whether it can be the target of focus events or not.
-  void setProperties(double width, double height, double insetTop,
-      double insetRight, double insetBottom, double insetLeft, bool focusable) {
-    throw UnimplementedError();
+    return new Scene._(_persistedScene.rootElement);
   }
 }
 
 /// A handle for the framework to hold and retain an engine layer across frames.
 class EngineLayer {}
 
-//// (Fuchsia-only) Hosts content provided by another application.
+/// (Fuchsia-only) Hosts content provided by another application.
 class SceneHost {
   /// Creates a host for a child scene's content.
   ///
@@ -596,17 +566,16 @@ class SceneHost {
   /// //topaz/public/dart/fuchsia_scenic_flutter/.
   ///
   /// The SceneHost takes ownership of the provided ViewHolder token.
-  SceneHost(
-      dynamic viewHolderToken,
-      void Function() viewConnectedCallback,
-      void Function() viewDisconnectedCallback,
-      void Function(bool) viewStateChangedCallback);
+  SceneHost(dynamic viewHolderToken,
+    void Function() viewConnectedCallback,
+    void Function() viewDisconnectedCallback,
+    void Function(bool) viewStateChangedCallback);
 
   SceneHost.fromViewHolderToken(
-      dynamic viewHolderToken,
-      void Function() viewConnectedCallback,
-      void Function() viewDisconnectedCallback,
-      void Function(bool) viewStateChangedCallback);
+    dynamic viewHolderToken,
+    void Function() viewConnectedCallback,
+    void Function() viewDisconnectedCallback,
+    void Function(bool) viewStateChangedCallback);
 
   /// Releases the resources associated with the SceneHost.
   ///
@@ -615,10 +584,16 @@ class SceneHost {
 
   /// Set properties on the linked scene.  These properties include its bounds,
   /// as well as whether it can be the target of focus events or not.
-  void setProperties(double width, double height, double insetTop,
-      double insetRight, double insetBottom, double insetLeft, bool focusable) {
-    throw UnimplementedError();
-  }
+  void setProperties(
+    double width,
+    double height,
+    double insetTop,
+    double insetRight,
+    double insetBottom,
+    double insetLeft,
+    bool focusable) {
+      throw UnimplementedError();
+    }
 
   /// Set the opacity of the linked scene.  This opacity value is applied only
   /// once, when the child scene is composited into our own.

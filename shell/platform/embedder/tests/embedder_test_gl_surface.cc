@@ -2,19 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "flutter/testing/test_gl_surface.h"
+#include "flutter/shell/platform/embedder/tests/embedder_test_gl_surface.h"
 
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
 
 #include <sstream>
 #include <string>
 
 #include "flutter/fml/logging.h"
-#include "third_party/skia/include/gpu/gl/GrGLAssembleInterface.h"
 
 namespace flutter {
-namespace testing {
 
 static std::string GetEGLError() {
   std::stringstream stream;
@@ -77,7 +74,7 @@ static std::string GetEGLError() {
   return stream.str();
 }
 
-TestGLSurface::TestGLSurface() {
+EmbedderTestGLSurface::EmbedderTestGLSurface() {
   display_ = ::eglGetDisplay(EGL_DEFAULT_DISPLAY);
   FML_CHECK(display_ != EGL_NO_DISPLAY);
 
@@ -154,7 +151,7 @@ TestGLSurface::TestGLSurface() {
   }
 }
 
-TestGLSurface::~TestGLSurface() {
+EmbedderTestGLSurface::~EmbedderTestGLSurface() {
   auto result = ::eglDestroyContext(display_, onscreen_context_);
   FML_CHECK(result == EGL_TRUE) << GetEGLError();
 
@@ -171,7 +168,7 @@ TestGLSurface::~TestGLSurface() {
   FML_CHECK(result == EGL_TRUE);
 }
 
-bool TestGLSurface::MakeCurrent() {
+bool EmbedderTestGLSurface::MakeCurrent() {
   auto result = ::eglMakeCurrent(display_, onscreen_surface_, onscreen_surface_,
                                  onscreen_context_);
 
@@ -182,7 +179,7 @@ bool TestGLSurface::MakeCurrent() {
   return result == EGL_TRUE;
 }
 
-bool TestGLSurface::ClearCurrent() {
+bool EmbedderTestGLSurface::ClearCurrent() {
   auto result = ::eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE,
                                  EGL_NO_CONTEXT);
 
@@ -193,7 +190,7 @@ bool TestGLSurface::ClearCurrent() {
   return result == EGL_TRUE;
 }
 
-bool TestGLSurface::Present() {
+bool EmbedderTestGLSurface::Present() {
   auto result = ::eglSwapBuffers(display_, onscreen_surface_);
 
   if (result == EGL_FALSE) {
@@ -203,12 +200,12 @@ bool TestGLSurface::Present() {
   return result == EGL_TRUE;
 }
 
-uint32_t TestGLSurface::GetFramebuffer() const {
+uint32_t EmbedderTestGLSurface::GetFramebuffer() {
   // Return FBO0
   return 0;
 }
 
-bool TestGLSurface::MakeResourceCurrent() {
+bool EmbedderTestGLSurface::MakeResourceCurrent() {
   auto result = ::eglMakeCurrent(display_, offscreen_surface_,
                                  offscreen_surface_, offscreen_context_);
 
@@ -220,10 +217,7 @@ bool TestGLSurface::MakeResourceCurrent() {
   return result == EGL_TRUE;
 }
 
-void* TestGLSurface::GetProcAddress(const char* name) const {
-  if (name == nullptr) {
-    return nullptr;
-  }
+void* EmbedderTestGLSurface::GetProcAddress(const char* name) {
   auto symbol = ::eglGetProcAddress(name);
   if (symbol == NULL) {
     FML_LOG(ERROR) << "Could not fetch symbol for name: " << name;
@@ -231,40 +225,4 @@ void* TestGLSurface::GetProcAddress(const char* name) const {
   return reinterpret_cast<void*>(symbol);
 }
 
-sk_sp<GrContext> TestGLSurface::CreateContext() {
-  if (!MakeCurrent()) {
-    return nullptr;
-  }
-
-  auto get_string =
-      reinterpret_cast<PFNGLGETSTRINGPROC>(GetProcAddress("glGetString"));
-
-  if (!get_string) {
-    return nullptr;
-  }
-
-  auto c_version = reinterpret_cast<const char*>(get_string(GL_VERSION));
-
-  if (c_version == NULL) {
-    return nullptr;
-  }
-
-  GrGLGetProc get_proc = [](void* context, const char name[]) -> GrGLFuncPtr {
-    return reinterpret_cast<GrGLFuncPtr>(
-        reinterpret_cast<TestGLSurface*>(context)->GetProcAddress(name));
-  };
-
-  std::string version(c_version);
-  auto interface = version.find("OpenGL ES") == std::string::npos
-                       ? GrGLMakeAssembledGLInterface(this, get_proc)
-                       : GrGLMakeAssembledGLESInterface(this, get_proc);
-
-  if (!interface) {
-    return nullptr;
-  }
-
-  return GrContext::MakeGL(interface);
-}
-
-}  // namespace testing
 }  // namespace flutter

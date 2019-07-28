@@ -4,9 +4,6 @@
 
 part of engine;
 
-final _supportsDecode =
-    js_util.hasProperty(js.JsObject(js.context['Image']), 'decode');
-
 class HtmlCodec implements ui.Codec {
   final String src;
 
@@ -20,45 +17,26 @@ class HtmlCodec implements ui.Codec {
 
   @override
   Future<ui.FrameInfo> getNextFrame() async {
-    StreamSubscription<html.Event> loadSubscription;
-    StreamSubscription<html.Event> errorSubscription;
-    final Completer<ui.FrameInfo> completer = Completer<ui.FrameInfo>();
+    StreamSubscription subscription;
+    StreamSubscription errorSubscription;
+    final completer = Completer<ui.FrameInfo>();
     final html.ImageElement imgElement = html.ImageElement();
-    // If the browser doesn't support asynchronous decoding of an image,
-    // then use the `onload` event to decide when it's ready to paint to the
-    // DOM. Unfortunately, this will case the image to be decoded synchronously
-    // on the main thread, and may cause dropped framed.
-    if (!_supportsDecode) {
-      loadSubscription = imgElement.onLoad.listen((html.Event event) {
-        loadSubscription.cancel();
-        errorSubscription.cancel();
-        final HtmlImage image = HtmlImage(
-          imgElement,
-          imgElement.naturalWidth,
-          imgElement.naturalHeight,
-        );
-        completer.complete(SingleFrameInfo(image));
-      });
-    }
-    errorSubscription = imgElement.onError.listen((html.Event event) {
-      loadSubscription?.cancel();
+    subscription = imgElement.onLoad.listen((_) {
+      subscription.cancel();
       errorSubscription.cancel();
-      completer.completeError(event);
+      final image = HtmlImage(
+        imgElement,
+        imgElement.naturalWidth,
+        imgElement.naturalHeight,
+      );
+      completer.complete(SingleFrameInfo(image));
+    });
+    errorSubscription = imgElement.onError.listen((e) {
+      subscription.cancel();
+      errorSubscription.cancel();
+      completer.completeError(e);
     });
     imgElement.src = src;
-    // If the browser supports asynchronous image decoding, use that instead
-    // of `onload`.
-    if (_supportsDecode) {
-      imgElement.decode().then((dynamic _) {
-        errorSubscription.cancel();
-        final HtmlImage image = HtmlImage(
-          imgElement,
-          imgElement.naturalWidth,
-          imgElement.naturalHeight,
-        );
-        completer.complete(SingleFrameInfo(image));
-      });
-    }
     return completer.future;
   }
 
