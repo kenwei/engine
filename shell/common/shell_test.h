@@ -9,6 +9,7 @@
 
 #include "flutter/common/settings.h"
 #include "flutter/fml/macros.h"
+#include "flutter/lib/ui/window/platform_message.h"
 #include "flutter/shell/common/run_configuration.h"
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/thread_host.h"
@@ -32,13 +33,18 @@ class ShellTest : public ThreadTest {
                                      TaskRunners task_runners);
   TaskRunners GetTaskRunnersForFixture();
 
+  void SendEnginePlatformMessage(Shell* shell,
+                                 fml::RefPtr<PlatformMessage> message);
+
   void AddNativeCallback(std::string name, Dart_NativeFunction callback);
 
   static void PlatformViewNotifyCreated(
       Shell* shell);  // This creates the surface
   static void RunEngine(Shell* shell, RunConfiguration configuration);
+  static void RestartEngine(Shell* shell, RunConfiguration configuration);
 
   static void PumpOneFrame(Shell* shell);
+  static void DispatchFakePointerData(Shell* shell);
 
   // Declare |UnreportedTimingsCount|, |GetNeedsReportTimings| and
   // |SetNeedsReportTimings| inside |ShellTest| mainly for easier friend class
@@ -80,6 +86,9 @@ class ShellTestPlatformView : public PlatformView, public GPUSurfaceGLDelegate {
   // |PlatformView|
   std::unique_ptr<Surface> CreateRenderingSurface() override;
 
+  // |PlatformView|
+  PointerDataDispatcherMaker GetDispatcherMaker() override;
+
   // |GPUSurfaceGLDelegate|
   bool GLContextMakeCurrent() override;
 
@@ -94,6 +103,9 @@ class ShellTestPlatformView : public PlatformView, public GPUSurfaceGLDelegate {
 
   // |GPUSurfaceGLDelegate|
   GLProcResolver GetGLProcResolver() const override;
+
+  // |GPUSurfaceGLDelegate|
+  ExternalViewEmbedder* GetExternalViewEmbedder() override;
 
   FML_DISALLOW_COPY_AND_ASSIGN(ShellTestPlatformView);
 };
